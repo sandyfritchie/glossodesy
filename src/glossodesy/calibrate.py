@@ -15,20 +15,19 @@ import numpy as np
 
 from .asjp import Wordlist
 from .distances import ldnd
-from .glottolog import Glottolog
+from .languages import Language
 
 
 def unrelated_ldnd(
-    wordlists: dict[str, Wordlist], glottolog: Glottolog, n: int = 50_000, seed: int = 0
+    wordlists: dict[str, Wordlist], languages: dict[str, Language], n: int = 50_000, seed: int = 0
 ) -> np.ndarray:
     """Sorted LDND values for ``n`` random pairs from different top-level families."""
-    langs = glottolog.languages
-    codes = [gc for gc in sorted(wordlists) if langs[gc].is_genealogical]
+    codes = [c for c in sorted(wordlists) if languages[c].lineage]
     rng = random.Random(seed)
     out = []
     while len(out) < n:
         a, b = rng.sample(codes, 2)
-        if langs[a].lineage[0] == langs[b].lineage[0]:
+        if languages[a].lineage[0] == languages[b].lineage[0]:
             continue
         r = ldnd(wordlists[a], wordlists[b])
         if r:

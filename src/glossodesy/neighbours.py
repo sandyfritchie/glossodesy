@@ -11,8 +11,9 @@ from rapidfuzz.distance import Levenshtein
 from rapidfuzz.process import cdist
 
 from .asjp import Wordlist
-from .distances import EARTH_RADIUS_KM, MIN_SHARED, ldnd
-from .glottolog import Language
+from .distances import MIN_SHARED, ldnd
+from .geo import EARTH_RADIUS_KM
+from .languages import Language
 
 
 def lexical(
@@ -53,6 +54,8 @@ def lexical(
         for j in cand[i]:
             if not np.isfinite(ldn[i, j]):
                 continue
+            if wordlists[codes[i]].doculect == wordlists[codes[j]].doculect:
+                continue  # two codes that fall back to the same ASJP list
             key = (min(i, int(j)), max(i, int(j)))
             if key not in cache:
                 r = ldnd(wordlists[codes[key[0]]], wordlists[codes[key[1]]])
@@ -64,10 +67,10 @@ def lexical(
 
 
 def geographic(languages: dict[str, Language], k: int = 25) -> dict[str, list[tuple[str, float]]]:
-    """Top-k nearest languages by great-circle distance (km)."""
-    codes = sorted(gc for gc, l in languages.items() if l.lat is not None and l.lon is not None)
-    lat = np.radians([languages[gc].lat for gc in codes])
-    lon = np.radians([languages[gc].lon for gc in codes])
+    """Top-k nearest languages by great-circle distance (km) between origin points."""
+    codes = sorted(c for c, l in languages.items() if l.origin and not l.is_macrolanguage)
+    lat = np.radians([languages[c].origin.lat for c in codes])
+    lon = np.radians([languages[c].origin.lon for c in codes])
     out = {}
     for start in range(0, len(codes), 1000):
         sl = slice(start, start + 1000)
@@ -77,7 +80,8 @@ def geographic(languages: dict[str, Language], k: int = 25) -> dict[str, list[tu
         d = 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(h, 0, 1)))
         for r in range(d.shape[0]):
             d[r, start + r] = np.inf
-        top = np.argsort(d, axis=1)[:, :k]
+        top = np.argpartition(d, k, axis=1)[:, :k]
         for r, row in enumerate(top):
+            row = row[np.argsort(d[r, row])]
             out[codes[start + r]] = [(codes[j], round(float(d[r, j]), 1)) for j in row]
     return out

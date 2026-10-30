@@ -1,15 +1,21 @@
-"""Load language-level languoids and their classification from Glottolog CLDF."""
+"""Glottolog: the classification tree, used for genealogy and for mapping
+dialect-level glottocodes onto languages.
+
+Language identity (codes, names, coordinates) comes from LinguaMeta; Glottolog
+is consulted only by glottocode.
+"""
 
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
-# Glottolog "category" values for language-level languoids whose position in a
-# pseudo-family says nothing about genealogy. Sign languages are kept: Glottolog
-# groups them in a pseudo-family but classifies them genealogically inside it.
+# Glottolog "category" values whose position in a pseudo-family says nothing
+# about genealogy. Sign languages are kept: Glottolog groups them in a
+# pseudo-family but classifies them genealogically inside it.
 NON_GENEALOGICAL = {
+    "Bookkeeping",
     "Pidgin",
     "Mixed_Language",
     "Artificial_Language",
@@ -17,94 +23,54 @@ NON_GENEALOGICAL = {
     "Unclassifiable",
     "Unattested",
 }
-EXCLUDED = {"Bookkeeping"}
-
-
-@dataclass
-class Language:
-    glottocode: str
-    name: str
-    iso: str | None
-    category: str
-    macroarea: str | None
-    lat: float | None
-    lon: float | None
-    family_id: str | None
-    path: tuple[str, ...] = field(default=())  # ancestors, root first, excluding self
-
-    @property
-    def is_genealogical(self) -> bool:
-        return self.category not in NON_GENEALOGICAL
-
-    @property
-    def lineage(self) -> tuple[str, ...]:
-        """Ancestors plus the language itself."""
-        return self.path + (self.glottocode,)
 
 
 @dataclass
 class Glottolog:
-    languages: dict[str, Language]
-    names: dict[str, str]  # every languoid (incl. families, dialects) -> name
-    language_of: dict[str, str]  # every languoid at or below language level -> language
+    names: dict[str, str]  # every languoid -> name
+    level: dict[str, str]  # every languoid -> family | language | dialect
+    path: dict[str, tuple[str, ...]]  # every languoid -> ancestors, root first
+    language_of: dict[str, str]  # language or dialect -> its language-level languoid
+    category: dict[str, str]  # language -> Glottolog category
+    coords: dict[str, tuple[float, float]]  # languoid -> (lat, lon), where Glottolog has one
 
-    def resolve(self, query: str) -> Language:
-        """Find a language by glottocode, ISO 639-3 code or exact name (case-insensitive)."""
-        q = query.strip()
-        if q in self.language_of:
-            return self.languages[self.language_of[q]]
-        ql = q.lower()
-        for lang in self.languages.values():
-            if lang.iso == ql:
-                return lang
-        matches = [l for l in self.languages.values() if l.name.lower() == ql]
-        if len(matches) == 1:
-            return matches[0]
-        if matches:
-            raise KeyError(f"{query!r} is ambiguous: {[m.glottocode for m in matches]}")
-        raise KeyError(f"No language matches {query!r}")
+    def lineage(self, glottocode: str) -> tuple[str, ...] | None:
+        """Root-to-languoid path, including the languoid itself."""
+        if glottocode not in self.level:
+            return None
+        return self.path.get(glottocode, ()) + (glottocode,)
 
-
-def _float(s: str) -> float | None:
-    return float(s) if s else None
+    def is_genealogical(self, glottocode: str) -> bool:
+        if glottocode not in self.level:
+            return False
+        lang = self.language_of.get(glottocode)
+        if lang is None:  # a family-level code: genealogical by definition
+            return self.category.get(glottocode, "Family") == "Family"
+        return self.category.get(lang) not in NON_GENEALOGICAL
 
 
 def load(glottolog_dir: Path) -> Glottolog:
     cldf = glottolog_dir / "cldf"
-    rows = list(csv.DictReader(open(cldf / "languages.csv", encoding="utf-8")))
-    names = {r["ID"]: r["Name"] for r in rows}
+    names, level, language_of, coords = {}, {}, {}, {}
+    with open(cldf / "languages.csv", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            gc = r["ID"]
+            names[gc] = r["Name"]
+            level[gc] = r["Level"]
+            if r["Latitude"] and r["Longitude"]:
+                coords[gc] = (float(r["Latitude"]), float(r["Longitude"]))
+            if r["Level"] == "language":
+                language_of[gc] = gc
+            elif r["Level"] == "dialect" and r["Language_ID"]:
+                language_of[gc] = r["Language_ID"]
 
-    category: dict[str, str] = {}
-    classification: dict[str, tuple[str, ...]] = {}
+    category, path = {}, {}
     with open(cldf / "values.csv", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             pid = r["Parameter_ID"]
             if pid == "category":
                 category[r["Language_ID"]] = r["Value"]
             elif pid == "classification" and r["Value"]:
-                classification[r["Language_ID"]] = tuple(r["Value"].split("/"))
-
-    languages: dict[str, Language] = {}
-    language_of: dict[str, str] = {}
-    for r in rows:
-        gc = r["ID"]
-        if r["Level"] == "language":
-            cat = category.get(gc, "")
-            if cat in EXCLUDED:
-                continue
-            languages[gc] = Language(
-                glottocode=gc,
-                name=r["Name"],
-                iso=r["ISO639P3code"] or None,
-                category=cat,
-                macroarea=r["Macroarea"] or None,
-                lat=_float(r["Latitude"]),
-                lon=_float(r["Longitude"]),
-                family_id=r["Family_ID"] or None,
-                path=classification.get(gc, ()),
-            )
-            language_of[gc] = gc
-    for r in rows:
-        if r["Level"] == "dialect" and r["Language_ID"] in languages:
-            language_of[r["ID"]] = r["Language_ID"]
-    return Glottolog(languages=languages, names=names, language_of=language_of)
+                path[r["Language_ID"]] = tuple(r["Value"].split("/"))
+    return Glottolog(names=names, level=level, path=path, language_of=language_of, category=category,
+                     coords=coords)

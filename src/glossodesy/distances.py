@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -10,7 +9,9 @@ from rapidfuzz.distance import Levenshtein
 from rapidfuzz.process import cdist
 
 from .asjp import Wordlist
-from .glottolog import Language
+from .geo import great_circle_km
+from .languages import Language
+from .linguameta import Point
 
 # --- Genealogical ---------------------------------------------------------
 
@@ -24,12 +25,12 @@ class Genealogical:
 def genealogical(a: Language, b: Language) -> Genealogical | None:
     """Tree distance: 1 - shared lineage / longer lineage.
 
-    Lineages are root-to-language paths in the Glottolog tree. Because Glottolog
+    Lineages are root-to-languoid paths in the Glottolog tree. Because Glottolog
     subgroups some families far more finely than others, the same number can
     mean different time depths in different families; it is a structural
     measure, not a dating.
     """
-    if not (a.is_genealogical and b.is_genealogical):
+    if a.lineage is None or b.lineage is None:
         return None
     la, lb = a.lineage, b.lineage
     shared = 0
@@ -44,17 +45,24 @@ def genealogical(a: Language, b: Language) -> Genealogical | None:
 
 # --- Geographic -----------------------------------------------------------
 
-EARTH_RADIUS_KM = 6371.0
+
+@dataclass
+class Geographic:
+    km: float
+    points: tuple[Point, Point]  # the two origin points compared
 
 
-def geographic_km(a: Language, b: Language) -> float | None:
-    """Great-circle distance between Glottolog's representative points."""
-    if None in (a.lat, a.lon, b.lat, b.lon):
+def geographic(a: Language, b: Language) -> Geographic | None:
+    """Great-circle distance between the two languages' origin points.
+
+    Each language is represented by one point: where most people would say it
+    comes from (see languages.choose_origin), not wherever it happens to be
+    spoken today, so English is in England rather than Hong Kong.
+    """
+    if a.origin is None or b.origin is None:
         return None
-    p1, p2 = math.radians(a.lat), math.radians(b.lat)
-    dp, dl = p2 - p1, math.radians(b.lon - a.lon)
-    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(h))
+    p, q = a.origin, b.origin
+    return Geographic(great_circle_km(p.lat, p.lon, q.lat, q.lon), (p, q))
 
 
 # --- Lexical (LDND) -------------------------------------------------------

@@ -17,9 +17,10 @@ DEFAULT_RAW_DIR = Path("data/raw")
 class Source:
     key: str
     repo: str
-    tag: str
+    tag: str  # a release tag, or a commit hash where the repo has no releases
     licence: str
     citation: str
+    subdir: str | None = None  # fetch only this folder of a larger repo
 
     @property
     def url(self) -> str:
@@ -27,6 +28,17 @@ class Source:
 
 
 SOURCES: dict[str, Source] = {
+    "linguameta": Source(
+        key="linguameta",
+        repo="google-research/url-nlp",
+        tag="452a21ad3dae5668c06ceeac21ff073e1e40f9be",
+        licence="CC-BY-SA-4.0",
+        citation=(
+            "Ritchie, Sandy, Daan van Esch, Uche Okonkwo, Shikhar Vashishth & Emily Drummond. "
+            "2024. LinguaMeta: Unified Metadata for Thousands of Languages. LREC-COLING 2024."
+        ),
+        subdir="linguameta",
+    ),
     "glottolog": Source(
         key="glottolog",
         repo="glottolog/glottolog-cldf",
@@ -51,7 +63,9 @@ SOURCES: dict[str, Source] = {
 
 
 def source_dir(key: str, raw_dir: Path = DEFAULT_RAW_DIR) -> Path:
-    return raw_dir / SOURCES[key].repo.split("/")[-1]
+    src = SOURCES[key]
+    root = raw_dir / src.repo.split("/")[-1]
+    return root / src.subdir if src.subdir else root
 
 
 def fetch(raw_dir: Path = DEFAULT_RAW_DIR, keys: list[str] | None = None) -> None:
@@ -59,12 +73,17 @@ def fetch(raw_dir: Path = DEFAULT_RAW_DIR, keys: list[str] | None = None) -> Non
     raw_dir.mkdir(parents=True, exist_ok=True)
     for key in keys or list(SOURCES):
         src = SOURCES[key]
-        dest = source_dir(key, raw_dir)
-        if dest.exists():
-            print(f"{key}: already present at {dest}")
+        if source_dir(key, raw_dir).exists():
+            print(f"{key}: already present at {source_dir(key, raw_dir)}")
             continue
-        print(f"{key}: cloning {src.repo} @ {src.tag}")
-        subprocess.run(
-            ["git", "clone", "-q", "--depth", "1", "--branch", src.tag, src.url, str(dest)],
-            check=True,
-        )
+        dest = raw_dir / src.repo.split("/")[-1]
+        print(f"{key}: fetching {src.repo} @ {src.tag[:12]}")
+        if src.subdir:  # sparse checkout of one folder at a pinned commit
+            git = ["git", "-C", str(dest)]
+            subprocess.run(["git", "clone", "-q", "--filter=blob:none", "--no-checkout", "--sparse",
+                            src.url, str(dest)], check=True)
+            subprocess.run(git + ["sparse-checkout", "set", src.subdir], check=True)
+            subprocess.run(git + ["-c", "advice.detachedHead=false", "checkout", "-q", src.tag], check=True)
+        else:
+            subprocess.run(["git", "-c", "advice.detachedHead=false", "clone", "-q", "--depth", "1",
+                            "--branch", src.tag, src.url, str(dest)], check=True)
