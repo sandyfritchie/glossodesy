@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -10,6 +9,7 @@ from rapidfuzz.distance import Levenshtein
 from rapidfuzz.process import cdist
 
 from .asjp import Wordlist
+from .geo import great_circle_km
 from .languages import Language
 from .linguameta import Point
 
@@ -45,34 +45,24 @@ def genealogical(a: Language, b: Language) -> Genealogical | None:
 
 # --- Geographic -----------------------------------------------------------
 
-EARTH_RADIUS_KM = 6371.0
-
-
-def great_circle_km(p: Point, q: Point) -> float:
-    p1, p2 = math.radians(p.lat), math.radians(q.lat)
-    dp, dl = p2 - p1, math.radians(q.lon - p.lon)
-    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(h))
-
 
 @dataclass
 class Geographic:
     km: float
-    points: tuple[Point, Point]  # the closest pair of locations
+    points: tuple[Point, Point]  # the two origin points compared
 
 
 def geographic(a: Language, b: Language) -> Geographic | None:
-    """Distance between the closest pair of LinguaMeta locations.
+    """Great-circle distance between the two languages' origin points.
 
-    LinguaMeta gives a point per country a language is spoken in, so a
-    language with several points is as close as its nearest one.
+    Each language is represented by one point: where most people would say it
+    comes from (see languages.choose_origin), not wherever it happens to be
+    spoken today, so English is in England rather than Hong Kong.
     """
-    if not a.points or not b.points:
+    if a.origin is None or b.origin is None:
         return None
-    return min(
-        (Geographic(great_circle_km(p, q), (p, q)) for p in a.points for q in b.points),
-        key=lambda g: g.km,
-    )
+    p, q = a.origin, b.origin
+    return Geographic(great_circle_km(p.lat, p.lon, q.lat, q.lon), (p, q))
 
 
 # --- Lexical (LDND) -------------------------------------------------------

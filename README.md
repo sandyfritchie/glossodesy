@@ -19,7 +19,7 @@ Swahili…) and instead point to their member languages.
 |---|---|---|---|
 | Genealogical | Glottolog 5.3 | Tree distance: `1 − shared lineage / longer lineage`, plus the lowest common ancestor | ~7,150 languages (not pidgins, mixed, artificial or unclassified languages) |
 | Lexical | ASJP 21.1 | LDND (Wichmann et al. 2010) on the 40-item ASJP list, with a chance baseline | ~5,500 languages |
-| Geographic | LinguaMeta | Great-circle distance between LinguaMeta's points (one per country a language is spoken in), using the closest pair | ~6,480 languages |
+| Geographic | LinguaMeta (Glottolog fallback) | Great-circle distance between each language's origin point | ~7,150 languages |
 
 Planned: grammatical (Grambank), phonological (PHOIBLE, needing more thought
 than inventory overlap).
@@ -52,9 +52,20 @@ than inventory overlap).
 - Where ASJP has no list for a variety, it falls back to its language's list,
   so two codes can share one (flagged as "same ASJP list"; they're left out of
   each other's neighbour lists).
-- Using the closest pair of points means widely spoken languages are "near"
-  almost everything: English has points in Hong Kong, India, Singapore and
-  more. Which point should represent a language is an open question.
+- **Origin points.** LinguaMeta has a point for each country a language is
+  spoken in. Each language is represented by one: where most people would say
+  it comes from. Most languages have only one point; for the ~50 with several,
+  we take the one in the country Glottolog's coordinate falls in (English in
+  Great Britain, Spanish in Spain, Portuguese in Portugal), else the nearest
+  to it, else the country with most speakers. Diaspora and colonial languages
+  still look far apart (Afrikaans–Dutch: ~9,500 km).
+- **Missing points.** LinguaMeta has no point for ~1,000 languages. All of them
+  had Glottolog points when LinguaMeta was built, and those points are less
+  reliable than the ones LinguaMeta kept: about 23% fall outside every country
+  LinguaMeta lists for the language, against 4% for the kept ones. So we use
+  Glottolog's point only when it lands in one of the language's LinguaMeta
+  countries, which recovers ~700 languages. Countries are judged by nearest
+  populated place, which can misjudge points near borders and on small islands.
 
 ## Usage
 

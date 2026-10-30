@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
+from .geo import country_of, great_circle_km
 from .glottolog import Glottolog
 from .linguameta import Point, Record
+
+FALLBACK_SOURCE = "GLOTTOLOG_FALLBACK"
 
 
 @dataclass
@@ -13,6 +17,8 @@ class Language:
     code: str  # BCP-47, the project's primary key
     record: Record
     lineage: tuple[str, ...] | None  # Glottolog root-to-languoid path, if classifiable
+    points: tuple[Point, ...] = field(default=())  # every location (LinguaMeta, or our fallback)
+    origin: Point | None = None  # the one location that stands for the language
 
     @property
     def name(self) -> str:
@@ -21,10 +27,6 @@ class Language:
     @property
     def glottocode(self) -> str | None:
         return self.record.glottocode
-
-    @property
-    def points(self) -> tuple[Point, ...]:
-        return self.record.points
 
     @property
     def is_macrolanguage(self) -> bool:
@@ -69,11 +71,78 @@ class Languages(dict[str, Language]):
         return hit
 
 
-def build(records: dict[str, Record], glottolog: Glottolog) -> Languages:
+def choose_origin(
+    points: tuple[Point, ...],
+    glottolog_point: tuple[float, float] | None,
+    glottolog_country: str | None = None,
+) -> Point | None:
+    """The location most people would think of as where the language is from.
+
+    LinguaMeta has a point for each country a language is spoken in. Most
+    languages have one. For the rest, Glottolog's coordinate marks the
+    traditional area, so we take the LinguaMeta point in the country that
+    coordinate falls in (English in England, Spanish in Spain, Portuguese in
+    Portugal), or failing that the nearest one, or with no Glottolog point at
+    all the country with the most speakers. Regional points such as "Latin
+    America" are only used if there is nothing else.
+    """
+    candidates = [p for p in points if p.locale.isalpha()] or list(points)
+    if len(candidates) <= 1:
+        return candidates[0] if candidates else None
+    if glottolog_country:
+        same = [p for p in candidates if p.locale.upper() == glottolog_country.upper()]
+        if same:
+            return same[0]
+    if glottolog_point:
+        return min(candidates, key=lambda p: great_circle_km(p.lat, p.lon, *glottolog_point))
+    return max(candidates, key=lambda p: p.speakers or 0)
+
+
+def build(
+    records: dict[str, Record],
+    glottolog: Glottolog,
+    geocode: Callable[[list[tuple[float, float]]], list[str]] = country_of,
+) -> Languages:
+    """Join LinguaMeta to Glottolog.
+
+    LinguaMeta has no coordinates for ~1,000 languages. Glottolog has a point
+    for most of them, but these are on average less reliable (in a sample, a
+    fifth fell outside every country LinguaMeta lists for the language, and
+    several of those were plainly misplaced). So we fall back to Glottolog's
+    point only when it lands in one of the language's LinguaMeta countries.
+    """
+
+    def glottolog_point(rec: Record) -> tuple[float, float] | None:
+        gc = rec.glottocode
+        if not gc:
+            return None
+        return glottolog.coords.get(gc) or glottolog.coords.get(glottolog.language_of.get(gc, ""))
+
+    # Which country is each relevant Glottolog point in? Needed for languages
+    # with no LinguaMeta point (fallback) or with several (choosing an origin).
+    to_geocode = [
+        code for code, rec in records.items()
+        if glottolog_point(rec) and ((not rec.points and rec.locales) or len(rec.points) > 1)
+    ]
+    glottolog_country = dict(zip(to_geocode, geocode([glottolog_point(records[c]) for c in to_geocode])))
+
+    fallback = {}
+    for code, cc in glottolog_country.items():
+        rec = records[code]
+        if rec.scope == "LANGUAGE" and not rec.points and cc.lower() in rec.locales:
+            fallback[code] = Point(*glottolog_point(rec), cc.lower(), FALLBACK_SOURCE)
+
     out = Languages()
     for code, rec in sorted(records.items()):
         lineage = None
         if rec.glottocode and glottolog.is_genealogical(rec.glottocode):
             lineage = glottolog.lineage(rec.glottocode)
-        out[code] = Language(code=code, record=rec, lineage=lineage)
+        points = rec.points or ((fallback[code],) if code in fallback else ())
+        out[code] = Language(
+            code=code,
+            record=rec,
+            lineage=lineage,
+            points=points,
+            origin=choose_origin(points, glottolog_point(rec), glottolog_country.get(code)),
+        )
     return out

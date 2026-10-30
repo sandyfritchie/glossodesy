@@ -32,6 +32,7 @@ class Glottolog:
     path: dict[str, tuple[str, ...]]  # every languoid -> ancestors, root first
     language_of: dict[str, str]  # language or dialect -> its language-level languoid
     category: dict[str, str]  # language -> Glottolog category
+    coords: dict[str, tuple[float, float]]  # languoid -> (lat, lon), where Glottolog has one
 
     def lineage(self, glottocode: str) -> tuple[str, ...] | None:
         """Root-to-languoid path, including the languoid itself."""
@@ -50,12 +51,14 @@ class Glottolog:
 
 def load(glottolog_dir: Path) -> Glottolog:
     cldf = glottolog_dir / "cldf"
-    names, level, language_of = {}, {}, {}
+    names, level, language_of, coords = {}, {}, {}, {}
     with open(cldf / "languages.csv", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             gc = r["ID"]
             names[gc] = r["Name"]
             level[gc] = r["Level"]
+            if r["Latitude"] and r["Longitude"]:
+                coords[gc] = (float(r["Latitude"]), float(r["Longitude"]))
             if r["Level"] == "language":
                 language_of[gc] = gc
             elif r["Level"] == "dialect" and r["Language_ID"]:
@@ -69,4 +72,5 @@ def load(glottolog_dir: Path) -> Glottolog:
                 category[r["Language_ID"]] = r["Value"]
             elif pid == "classification" and r["Value"]:
                 path[r["Language_ID"]] = tuple(r["Value"].split("/"))
-    return Glottolog(names=names, level=level, path=path, language_of=language_of, category=category)
+    return Glottolog(names=names, level=level, path=path, language_of=language_of, category=category,
+                     coords=coords)

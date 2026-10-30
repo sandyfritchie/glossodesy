@@ -18,8 +18,9 @@ from pathlib import Path
 class Point:
     lat: float
     lon: float
-    locale: str  # ISO 3166 code (or UN M49 region)
-    source: str  # GLOTTOLOG or GOOGLE_RESEARCH
+    locale: str  # ISO 3166 code (or UN M49 region such as 419)
+    source: str  # GLOTTOLOG or GOOGLE_RESEARCH (or GLOTTOLOG_FALLBACK, added by us)
+    speakers: int | None = None  # in that locale
 
 
 @dataclass
@@ -35,6 +36,7 @@ class Record:
     macrolanguage: str | None = None
     members: tuple[str, ...] = ()
     points: tuple[Point, ...] = field(default=())
+    locales: tuple[str, ...] = ()  # every country LinguaMeta lists, with or without a point
 
 
 def load(linguameta_dir: Path) -> dict[str, Record]:
@@ -54,7 +56,8 @@ def load(linguameta_dir: Path) -> dict[str, Record]:
             geo = e.get("geolocation")
             if not geo:
                 continue
-            p = Point(geo["latitude"], geo["longitude"], e["locale"]["iso_3166_code"], geo.get("source", ""))
+            p = Point(geo["latitude"], geo["longitude"], e["locale"]["iso_3166_code"], geo.get("source", ""),
+                      (e.get("speaker_data") or {}).get("number_of_speakers"))
             if all((p.lat, p.lon) != (q.lat, q.lon) for q in points):  # repeated once per script
                 points.append(p)
         out[code] = Record(
@@ -69,5 +72,7 @@ def load(linguameta_dir: Path) -> dict[str, Record]:
             macrolanguage=row["macrolanguage_bcp_47_code"] or None,
             members=tuple(detail.get("individual_language_bcp_47_codes", ())),
             points=tuple(points),
+            locales=tuple(sorted({e["locale"]["iso_3166_code"] for e in detail.get("language_script_locale", [])
+                                  if "locale" in e})),
         )
     return out

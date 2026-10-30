@@ -63,7 +63,7 @@ class Data:
             },
             "geographic": None if geo is None else {
                 "km": round(geo.km, 1),
-                "locales": [geo.points[0].locale, geo.points[1].locale],
+                "origins": [geo.points[0].locale, geo.points[1].locale],
             },
             "lexical": None if lex is None else {
                 "ldnd": round(lex.ldnd, 4),
@@ -130,8 +130,8 @@ def cmd_neighbours(args) -> None:
             for dist, code in scored[: args.k]:
                 print(f"  {dist:6.3f}  {langs[code].name} ({code})")
         else:
-            if not L.points:
-                print("  no location in LinguaMeta")
+            if not L.origin:
+                print("  no location")
                 continue
             others = sorted(
                 ((g.km, o) for o in langs.values()
@@ -165,7 +165,8 @@ def cmd_build(args) -> None:
             "members": list(l.record.members) or None,
             "speakers": l.record.speakers,
             "endangerment": l.record.endangerment,
-            "points": [[p.lat, p.lon, p.locale] for p in l.points],
+            "origin": [l.origin.lat, l.origin.lon, l.origin.locale] if l.origin else None,
+            "points": [[p.lat, p.lon, p.locale, p.source] for p in l.points],
             "lineage": list(l.lineage) if l.lineage else None,
             "asjp": wls[code].doculect if code in wls else None,
         }

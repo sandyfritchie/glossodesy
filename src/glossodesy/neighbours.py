@@ -11,7 +11,8 @@ from rapidfuzz.distance import Levenshtein
 from rapidfuzz.process import cdist
 
 from .asjp import Wordlist
-from .distances import EARTH_RADIUS_KM, MIN_SHARED, ldnd
+from .distances import MIN_SHARED, ldnd
+from .geo import EARTH_RADIUS_KM
 from .languages import Language
 
 
@@ -66,24 +67,21 @@ def lexical(
 
 
 def geographic(languages: dict[str, Language], k: int = 25) -> dict[str, list[tuple[str, float]]]:
-    """Top-k nearest languages by great-circle distance (km), using each
-    language's closest LinguaMeta point."""
-    codes = sorted(c for c, l in languages.items() if l.points)
-    owner = np.array([i for i, c in enumerate(codes) for _ in languages[c].points])
-    lat = np.radians([p.lat for c in codes for p in languages[c].points])
-    lon = np.radians([p.lon for c in codes for p in languages[c].points])
-    starts = np.flatnonzero(np.r_[True, owner[1:] != owner[:-1]])  # first point of each language
-
+    """Top-k nearest languages by great-circle distance (km) between origin points."""
+    codes = sorted(c for c, l in languages.items() if l.origin and not l.is_macrolanguage)
+    lat = np.radians([languages[c].origin.lat for c in codes])
+    lon = np.radians([languages[c].origin.lon for c in codes])
     out = {}
-    for i, code in enumerate(codes):
-        mine = owner == i
-        dlat = lat[None, :] - lat[mine, None]
-        dlon = lon[None, :] - lon[mine, None]
-        h = np.sin(dlat / 2) ** 2 + np.cos(lat[mine, None]) * np.cos(lat[None, :]) * np.sin(dlon / 2) ** 2
-        d = (2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(h, 0, 1)))).min(axis=0)
-        per_lang = np.minimum.reduceat(d, starts)
-        per_lang[i] = np.inf
-        top = np.argpartition(per_lang, k)[:k]
-        top = top[np.argsort(per_lang[top])]
-        out[code] = [(codes[j], round(float(per_lang[j]), 1)) for j in top]
+    for start in range(0, len(codes), 1000):
+        sl = slice(start, start + 1000)
+        dlat = lat[None, :] - lat[sl, None]
+        dlon = lon[None, :] - lon[sl, None]
+        h = np.sin(dlat / 2) ** 2 + np.cos(lat[sl, None]) * np.cos(lat[None, :]) * np.sin(dlon / 2) ** 2
+        d = 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(h, 0, 1)))
+        for r in range(d.shape[0]):
+            d[r, start + r] = np.inf
+        top = np.argpartition(d, k, axis=1)[:, :k]
+        for r, row in enumerate(top):
+            row = row[np.argsort(d[r, row])]
+            out[codes[start + r]] = [(codes[j], round(float(d[r, j]), 1)) for j in row]
     return out
