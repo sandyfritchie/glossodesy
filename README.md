@@ -127,8 +127,11 @@ written in (or, for closely related languages, the scripts that divide them,
 as with Hindi and Urdu), and the countries both are spoken in and official
 in. These are facts about the pair, not distances, so they aren't scored.
 
-The map highlights the other countries where each language is spoken today,
-zooming out to include them all, and hatches
+The map highlights the other countries where each language is spoken today
+(pink, blue, or purple for both), zooming out to include them all. Countries
+a language's own area substantially covers (8% or more of points sampled
+inside it) stay untinted, since the area already shows where in them it is
+spoken: Tsimane' and Yuracaré show their areas, not all of Bolivia. It also hatches
 Natural Earth's disputed areas (Kashmir, Aksai Chin, Crimea…) rather than
 assigning them to a claimant. `scripts/make_map_assets.py` builds the
 country-code table and disputed-areas layer in `site/assets/map-extra.json`.

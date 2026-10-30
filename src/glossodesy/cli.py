@@ -196,6 +196,8 @@ def cmd_build(args) -> None:
         print(f"  wrote {path} ({path.stat().st_size / 1e6:.1f} MB)")
 
     t = time.time()
+    from .geo import country_of
+    home = glottography.home_countries(d.areas, country_of)
     dump("languages.json", {
         code: {
             "name": l.name,
@@ -217,6 +219,7 @@ def cmd_build(args) -> None:
             "lineage": list(l.lineage) if l.lineage else None,
             "asjp": wls[code].doculect if code in wls else None,
             "area": d.area_source.get(code) if code in d.areas else None,
+            "home": home.get(code) or ([l.origin.locale] if l.origin and l.origin.locale.isalpha() else None),
         }
         for code, l in langs.items()
     })

@@ -18,7 +18,8 @@ from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
 
-from shapely import set_precision
+import numpy as np
+from shapely import contains_xy, set_precision
 from shapely.geometry import MultiPolygon, Polygon, mapping, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry.polygon import orient
@@ -83,6 +84,44 @@ def drop_outliers(
         keep = [p for i, p in enumerate(areas[code].geoms) if i not in gone]
         out[code] = keep[0] if len(keep) == 1 else MultiPolygon(keep)
     return out, sum(len(v) for v in drop.values())
+
+
+def home_countries(
+    areas: dict[str, BaseGeometry],
+    country_of: Callable[[list[tuple[float, float]]], list[str]],
+    samples: int = 60,
+    min_share: float = 0.08,
+) -> dict[str, list[str]]:
+    """Countries a language's area substantially covers (lower-case ISO codes).
+
+    Samples points inside each area and looks up their country. A country
+    counts if it holds at least ``min_share`` of the samples, so an area that
+    merely brushes a border doesn't claim the neighbour. The site leaves these
+    countries untinted, since the area itself already shows where in them the
+    language is spoken.
+    """
+    rng = np.random.default_rng(0)
+    codes, points = [], []
+    for code, geom in sorted(areas.items()):
+        x0, y0, x1, y1 = geom.bounds
+        xs = rng.uniform(x0, x1, samples * 8)
+        ys = rng.uniform(y0, y1, samples * 8)
+        inside = contains_xy(geom, xs, ys)
+        pts = list(zip(ys[inside][:samples], xs[inside][:samples]))
+        if not pts:  # very thin areas: fall back to a point that's certainly inside
+            rp = geom.representative_point()
+            pts = [(rp.y, rp.x)]
+        codes.extend([code] * len(pts))
+        points.extend(pts)
+    countries = country_of(points)
+    counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for code, cc in zip(codes, countries):
+        counts[code][cc.lower()] += 1
+    out = {}
+    for code, c in counts.items():
+        total = sum(c.values())
+        out[code] = sorted(cc for cc, n in c.items() if n / total >= min_share or n == total)
+    return out
 
 
 def simplify(geom: BaseGeometry) -> BaseGeometry:

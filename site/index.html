@@ -925,9 +925,12 @@ async function mapSection(A, B, d, ga, gb) {
   }
 
   svg.append("path").datum(M.land).attr("class", "land").attr("d", path);
-  // Where each language is spoken today (LinguaMeta's countries): pink for
-  // one, blue for the other, purple where both are.
-  const ia = ids(A), ib = ids(B);
+  // Other countries where each language is spoken today (LinguaMeta's): pink
+  // for one, blue for the other, purple where both are. The countries a
+  // language's own area covers stay untinted; the area already shows where in
+  // them it is spoken, and tinting all of Bolivia for Tsimane' would mislead.
+  const others = (L) => { const home = new Set((L.home || []).map((c) => M.iso[c])); return new Set([...ids(L)].filter((id) => !home.has(id))); };
+  const ia = others(A), ib = others(B);
   const tint = (id) => (ia.has(id) && ib.has(id) ? "tint-both" : ia.has(id) ? "tint-a" : ib.has(id) ? "tint-b" : null);
   svg.append("g").selectAll("path").data(M.countries.filter((f) => tint(f.id)))
     .join("path").attr("class", (f) => tint(f.id)).attr("d", path);
@@ -986,9 +989,10 @@ async function mapSection(A, B, d, ga, gb) {
   enableZoom(s, svg, view, W, H);
 
   const key = s.querySelector(".map-key");
-  key.innerHTML = `<span><i class="sw sw-a"></i>Where ${esc(A.name)} is spoken today</span>
-    <span><i class="sw sw-b"></i>Where ${esc(B.name)} is spoken today</span>
-    ${spokenInBoth ? `<span><i class="sw sw-both"></i>Where both are spoken today</span>` : ""}
+  const onlyA = [...ia].some((id) => !ib.has(id)), onlyB = [...ib].some((id) => !ia.has(id));
+  key.innerHTML = `${onlyA ? `<span><i class="sw sw-a"></i>Other countries where ${esc(A.name)} is spoken today</span>` : ""}
+    ${onlyB ? `<span><i class="sw sw-b"></i>Other countries where ${esc(B.name)} is spoken today</span>` : ""}
+    ${spokenInBoth ? `<span><i class="sw sw-both"></i>Other countries where both are spoken today</span>` : ""}
     ${disputed.length ? `<span><i class="sw sw-hatch"></i>Disputed area, not assigned to any country</span>` : ""}
     ${shared ? `<span><i class="sw sw-shared"></i>Area the atlas gives to both</span>` : ""}
     ${ga || gb ? `<span class="map-source">Outlined areas: <i>Atlas of the World’s Languages</i> (Asher &amp; Moseley 2007), via Glottography.</span>` : ""}`;

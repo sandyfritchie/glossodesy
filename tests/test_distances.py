@@ -154,3 +154,13 @@ def test_drop_outliers_keeps_same_country_islands():
         return ["AB" if lat < 20 else "CD" for lat, lon in points]
     out, n = drop_outliers(areas, country_of)
     assert n == 1 and len(out["xx"].geoms) == 3
+
+
+def test_home_countries_ignores_a_border_brush():
+    from shapely.geometry import box
+    from glossodesy.glottography import home_countries
+    areas = {"xx": box(0, 0, 10, 10)}
+    # x < 9.5 is country AA, the last sliver BB: 5% of the area, under the 8% bar
+    def country_of(points):
+        return ["AA" if lon < 9.5 else "BB" for lat, lon in points]
+    assert home_countries(areas, country_of) == {"xx": ["aa"]}
