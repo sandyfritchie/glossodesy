@@ -105,3 +105,19 @@ def test_name_match_prefers_standard_variety():
     assert _name_match("ENGLISH", "English", True) > _name_match("ENGLISH_2", "English", True)
     assert _name_match("MANDARIN", "Mandarin Chinese", True) > _name_match("KUNMING_MANDARIN", "Mandarin Chinese", True)
     assert _name_match("NORWEGIAN_NYNORSK_TOTEN", "Norwegian Nynorsk", False) > 0
+
+
+def test_english_aliases_drop_codes_and_canonical():
+    from glossodesy.linguameta import english_aliases
+    detail = {"name_data": [
+        {"name": "Yue Chinese", "bcp_47_code": "en"}, {"name": "Cantonese", "bcp_47_code": "en"},
+        {"name": "Zh-Yue", "bcp_47_code": "en"}, {"name": "Nld", "bcp_47_code": "en"},
+        {"name": "cantonais", "bcp_47_code": "fr"}, {"name": "cantonese", "bcp_47_code": "en"},
+    ]}
+    assert english_aliases(detail, "Yue Chinese") == ("Cantonese",)
+
+
+def test_resolve_by_alias():
+    langs = Languages(yue=lang("yue", name="Yue Chinese"))
+    langs["yue"].record.aliases = ("Cantonese",)
+    assert langs.resolve("cantonese").code == "yue"

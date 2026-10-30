@@ -78,7 +78,8 @@ glossodesy neighbours eu -d geographic
 glossodesy build                       # JSON for the website, into data/build/
 ```
 
-Languages can be given as BCP-47 codes, ISO 639-3 codes, glottocodes or exact English names.
+Languages can be given as BCP-47 codes, ISO 639-3 codes, glottocodes, exact English names, or
+other English names LinguaMeta records (Cantonese, Sorani, Flemish); the website searches these too.
 
 The website shows each ASJP word with its spelling in the language's own
 writing system where NorthEuraLex (107 languages, mostly northern Eurasia) has

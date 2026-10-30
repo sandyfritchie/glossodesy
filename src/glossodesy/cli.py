@@ -182,6 +182,7 @@ def cmd_build(args) -> None:
             "scope": l.record.scope.lower(),
             "macrolanguage": l.record.macrolanguage,
             "members": list(l.record.members) or None,
+            "aliases": list(l.record.aliases) or None,
             "speakers": l.record.speakers,
             "endangerment": l.record.endangerment,
             "origin": [l.origin.lat, l.origin.lon, l.origin.locale] if l.origin else None,

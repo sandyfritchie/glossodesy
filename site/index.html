@@ -364,6 +364,7 @@ function buildIndex() {
     name: l.name.toLowerCase(),
     endonym: (l.endonym || "").toLowerCase(),
     words: l.name.toLowerCase().split(/[\s\-(),']+/).filter(Boolean),
+    aliases: (l.aliases || []).map((a) => [a, a.toLowerCase()]),
   }));
 }
 function search(q) {
@@ -371,16 +372,21 @@ function search(q) {
   if (!q) return [];
   const out = [];
   for (const e of INDEX) {
-    let s = 0;
+    let s = 0, aka = null;
     if (e.code === q || e.l.iso === q) s = 100;
     else if (e.name === q) s = 90;
     else if (e.name.startsWith(q)) s = 70;
     else if (e.words.some((w) => w.startsWith(q))) s = 55;
     else if (e.endonym && e.endonym.startsWith(q)) s = 50;
-    else if (q.length > 2 && e.name.includes(q)) s = 30;
-    if (s) out.push([s + Math.log10((e.l.speakers || 1) + 1) / 2, e]);
+    // Other English names: Cantonese finds Yue Chinese, Sorani finds Central Kurdish.
+    if (s < 85) for (const [orig, low] of e.aliases) {
+      const a = low === q ? 85 : low.startsWith(q) ? 60 : low.split(/[\s\-(),']+/).some((w) => w.startsWith(q)) ? 45 : 0;
+      if (a > s) { s = a; aka = e.name.includes(low) ? null : orig; }
+    }
+    if (!s && q.length > 2 && e.name.includes(q)) s = 30;
+    if (s) out.push([s + Math.log10((e.l.speakers || 1) + 1) / 2, e, aka]);
   }
-  return out.sort((a, b) => b[0] - a[0]).slice(0, 8).map((x) => x[1]);
+  return out.sort((a, b) => b[0] - a[0]).slice(0, 8).map(([, e, aka]) => (aka ? { ...e, aka } : e));
 }
 
 /** Wire a combobox: an <input> with a suggestion list. onPick(code) on choice. */
@@ -403,7 +409,8 @@ function combobox(input, list, onPick, { macroPage = false } = {}) {
       const tag = e.l.scope === "macrolanguage" ? "group of languages" : e.code;
       li.innerHTML = `<span class="nm"></span><span class="meta"></span>`;
       li.firstChild.textContent = e.l.name;
-      li.lastChild.textContent = e.l.endonym && e.l.endonym.toLowerCase() !== e.name ? `${e.l.endonym} · ${tag}` : tag;
+      li.lastChild.textContent = e.aka ? `also ${e.aka} · ${tag}`
+        : e.l.endonym && e.l.endonym.toLowerCase() !== e.name ? `${e.l.endonym} · ${tag}` : tag;
       li.addEventListener("mousedown", (ev) => { ev.preventDefault(); choose(i); });
       list.append(li);
     });
