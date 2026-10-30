@@ -39,6 +39,8 @@ class Record:
     points: tuple[Point, ...] = field(default=())
     locales: tuple[str, ...] = ()  # every country LinguaMeta lists, with or without a point
     aliases: tuple[str, ...] = ()  # other English names (Cantonese for Yue Chinese)
+    scripts: tuple[str, ...] = ()  # ISO 15924, the ones LinguaMeta marks canonical
+    official: tuple[str, ...] = ()  # countries where it has official status (CLDR)
 
 
 def english_aliases(detail: dict, canonical: str) -> tuple[str, ...]:
@@ -55,6 +57,40 @@ def english_aliases(detail: dict, canonical: str) -> tuple[str, ...]:
             seen.add(name.lower())
             out.append(name)
     return tuple(out)
+
+
+def canonical_scripts(detail: dict) -> tuple[str, ...]:
+    """The scripts a language is normally written in.
+
+    LinguaMeta lists every script it has seen a language in, including
+    romanisations (Hindi in Latin) and curiosities (English in Deseret), and
+    marks the usual ones canonical. Where nothing is marked, take what's listed.
+    """
+    entries = [e["script"] for e in detail.get("language_script_locale", []) if "script" in e]
+    marked = {s["iso_15924_code"] for s in entries if s.get("is_canonical")}
+    return tuple(sorted(marked or {s["iso_15924_code"] for s in entries if s.get("is_canonical") is not False}))
+
+
+# Script names as people say them; anything else is "<LinguaMeta name> script".
+SCRIPT_NAMES = {
+    "hans": "Simplified Chinese characters",
+    "hant": "Traditional Chinese characters",
+    "hani": "Chinese characters",
+    "jpan": "Japanese kanji and kana",
+    "kore": "Korean Hangul and hanja",
+    "tfng": "Tifinagh",
+    "brai": "Braille",
+}
+
+
+def script_names(linguameta_dir: Path) -> dict[str, str]:
+    data = json.loads((linguameta_dir / "data" / "scripts.json").read_text(encoding="utf-8"))
+    out = {}
+    for item in data["script_map"]:
+        code, name = item["script"]["name"], item["script"].get("full_name")
+        if name:
+            out[code] = SCRIPT_NAMES.get(code, f"{name} script")
+    return out
 
 
 def load(linguameta_dir: Path) -> dict[str, Record]:
@@ -93,5 +129,8 @@ def load(linguameta_dir: Path) -> dict[str, Record]:
             locales=tuple(sorted({e["locale"]["iso_3166_code"] for e in detail.get("language_script_locale", [])
                                   if "locale" in e})),
             aliases=english_aliases(detail, row["english_name"]),
+            scripts=canonical_scripts(detail),
+            official=tuple(sorted({e["locale"]["iso_3166_code"] for e in detail.get("language_script_locale", [])
+                                   if "locale" in e and (e.get("official_status") or {}).get("has_official_status")})),
         )
     return out

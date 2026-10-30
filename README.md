@@ -102,6 +102,12 @@ glossodesy build --out site/data
 python -m http.server -d site 8000      # then open http://localhost:8000
 ```
 
+Above the scales, a sentence gives context from LinguaMeta: speaker numbers,
+then only what the pair shares. That covers the scripts both are usually
+written in (or, for closely related languages, the scripts that divide them,
+as with Hindi and Urdu), and the countries both are spoken in and official
+in. These are facts about the pair, not distances, so they aren't scored.
+
 `.github/workflows/pages.yml` builds the data and deploys the site to GitHub
 Pages on every push to `main`.
 
