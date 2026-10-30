@@ -21,8 +21,9 @@
   --flag: #D4146E;
   --moss: #66785A;
   --moss-wash: rgba(102, 120, 90, 0.18);
-  --a-wash: rgba(212, 20, 110, 0.13);
-  --b-wash: rgba(59, 102, 132, 0.2);
+  --a-wash: rgba(212, 20, 110, 0.17);
+  --b-wash: rgba(40, 100, 180, 0.3);
+  --both-wash: rgba(118, 62, 168, 0.3);
   --shared-wash: rgba(74, 90, 104, 0.3);
   --land: #D5DED6;
   --land-edge: #AFBDB3;
@@ -38,7 +39,7 @@
     --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
     --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
     --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
-    --a-wash: rgba(255, 79, 154, 0.16); --b-wash: rgba(141, 183, 211, 0.18); --shared-wash: rgba(175, 189, 198, 0.3);
+    --a-wash: rgba(255, 79, 154, 0.18); --b-wash: rgba(110, 170, 240, 0.3); --both-wash: rgba(184, 140, 255, 0.28); --shared-wash: rgba(175, 189, 198, 0.3);
     --land: #22313D; --land-edge: #415A6E; --sea: #172430; --panel: #182531; color-scheme: dark;
   }
 }
@@ -46,7 +47,7 @@
   --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
   --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
   --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
-    --a-wash: rgba(255, 79, 154, 0.16); --b-wash: rgba(141, 183, 211, 0.18); --shared-wash: rgba(175, 189, 198, 0.3);
+    --a-wash: rgba(255, 79, 154, 0.18); --b-wash: rgba(110, 170, 240, 0.3); --both-wash: rgba(184, 140, 255, 0.28); --shared-wash: rgba(175, 189, 198, 0.3);
   --land: #22313D; --land-edge: #415A6E; --sea: #172430; --panel: #182531; color-scheme: dark;
 }
 
@@ -215,6 +216,7 @@ section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64
 .map-key .sw-shared { background: linear-gradient(var(--shared-wash), var(--shared-wash)), var(--land); border: 1.5px dashed var(--ink); }
 .map-key .map-source { color: var(--ink-faint); flex-basis: 100%; }
 .map .tint-b { fill: var(--b-wash); }
+.map .tint-both { fill: var(--both-wash); }
 .map .home-a-stop { stop-color: var(--flag); }
 .map .home-b-stop { stop-color: var(--survey); }
 .map .disputed { stroke: var(--ink-faint); stroke-width: 0.8; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
@@ -226,6 +228,7 @@ section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64
 /* Key squares match the tinted countries (wash over land, pale border), not the outlined areas. */
 .map-key .sw-a { background: linear-gradient(var(--a-wash), var(--a-wash)), var(--land); }
 .map-key .sw-b { background: linear-gradient(var(--b-wash), var(--b-wash)), var(--land); }
+.map-key .sw-both { background: linear-gradient(var(--both-wash), var(--both-wash)), var(--land); }
 .map-key .sw-hatch { background: repeating-linear-gradient(45deg, var(--land) 0 3px, var(--land-edge) 3px 5px); }
 .map .lbl { font: italic 500 16px var(--serif); fill: var(--ink); paint-order: stroke; stroke: var(--sea); stroke-width: 4px; }
 
@@ -922,12 +925,13 @@ async function mapSection(A, B, d, ga, gb) {
   }
 
   svg.append("path").datum(M.land).attr("class", "land").attr("d", path);
-  // Where each language is spoken today (LinguaMeta's countries).
-  for (const [L, cls] of [[A, "tint-a"], [B, "tint-b"]]) {
-    const want = ids(L);
-    svg.append("g").selectAll("path").data(M.countries.filter((f) => want.has(f.id)))
-      .join("path").attr("class", cls).attr("d", path);
-  }
+  // Where each language is spoken today (LinguaMeta's countries): pink for
+  // one, blue for the other, purple where both are.
+  const ia = ids(A), ib = ids(B);
+  const tint = (id) => (ia.has(id) && ib.has(id) ? "tint-both" : ia.has(id) ? "tint-a" : ib.has(id) ? "tint-b" : null);
+  svg.append("g").selectAll("path").data(M.countries.filter((f) => tint(f.id)))
+    .join("path").attr("class", (f) => tint(f.id)).attr("d", path);
+  const spokenInBoth = [...ia].some((id) => ib.has(id));
   svg.append("path").datum(M.borders).attr("class", "border").attr("d", path);
   // Disputed areas: hatched and assigned to no one.
   const inView = (f) => { const [[x0, y0], [x1, y1]] = path.bounds(f); return isFinite(x0) && x1 > 0 && x0 < W && y1 > 0 && y0 < H; };
@@ -984,6 +988,7 @@ async function mapSection(A, B, d, ga, gb) {
   const key = s.querySelector(".map-key");
   key.innerHTML = `<span><i class="sw sw-a"></i>Where ${esc(A.name)} is spoken today</span>
     <span><i class="sw sw-b"></i>Where ${esc(B.name)} is spoken today</span>
+    ${spokenInBoth ? `<span><i class="sw sw-both"></i>Where both are spoken today</span>` : ""}
     ${disputed.length ? `<span><i class="sw sw-hatch"></i>Disputed area, not assigned to any country</span>` : ""}
     ${shared ? `<span><i class="sw sw-shared"></i>Area the atlas gives to both</span>` : ""}
     ${ga || gb ? `<span class="map-source">Outlined areas: <i>Atlas of the World’s Languages</i> (Asher &amp; Moseley 2007), via Glottography.</span>` : ""}`;
