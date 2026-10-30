@@ -12,7 +12,7 @@ from rapidfuzz.process import cdist
 
 from .asjp import Wordlist
 from .distances import EARTH_RADIUS_KM, MIN_SHARED, ldnd
-from .glottolog import Language
+from .languages import Language
 
 
 def lexical(
@@ -53,6 +53,8 @@ def lexical(
         for j in cand[i]:
             if not np.isfinite(ldn[i, j]):
                 continue
+            if wordlists[codes[i]].doculect == wordlists[codes[j]].doculect:
+                continue  # two codes that fall back to the same ASJP list
             key = (min(i, int(j)), max(i, int(j)))
             if key not in cache:
                 r = ldnd(wordlists[codes[key[0]]], wordlists[codes[key[1]]])
@@ -64,20 +66,24 @@ def lexical(
 
 
 def geographic(languages: dict[str, Language], k: int = 25) -> dict[str, list[tuple[str, float]]]:
-    """Top-k nearest languages by great-circle distance (km)."""
-    codes = sorted(gc for gc, l in languages.items() if l.lat is not None and l.lon is not None)
-    lat = np.radians([languages[gc].lat for gc in codes])
-    lon = np.radians([languages[gc].lon for gc in codes])
+    """Top-k nearest languages by great-circle distance (km), using each
+    language's closest LinguaMeta point."""
+    codes = sorted(c for c, l in languages.items() if l.points)
+    owner = np.array([i for i, c in enumerate(codes) for _ in languages[c].points])
+    lat = np.radians([p.lat for c in codes for p in languages[c].points])
+    lon = np.radians([p.lon for c in codes for p in languages[c].points])
+    starts = np.flatnonzero(np.r_[True, owner[1:] != owner[:-1]])  # first point of each language
+
     out = {}
-    for start in range(0, len(codes), 1000):
-        sl = slice(start, start + 1000)
-        dlat = lat[None, :] - lat[sl, None]
-        dlon = lon[None, :] - lon[sl, None]
-        h = np.sin(dlat / 2) ** 2 + np.cos(lat[sl, None]) * np.cos(lat[None, :]) * np.sin(dlon / 2) ** 2
-        d = 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(h, 0, 1)))
-        for r in range(d.shape[0]):
-            d[r, start + r] = np.inf
-        top = np.argsort(d, axis=1)[:, :k]
-        for r, row in enumerate(top):
-            out[codes[start + r]] = [(codes[j], round(float(d[r, j]), 1)) for j in row]
+    for i, code in enumerate(codes):
+        mine = owner == i
+        dlat = lat[None, :] - lat[mine, None]
+        dlon = lon[None, :] - lon[mine, None]
+        h = np.sin(dlat / 2) ** 2 + np.cos(lat[mine, None]) * np.cos(lat[None, :]) * np.sin(dlon / 2) ** 2
+        d = (2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(h, 0, 1)))).min(axis=0)
+        per_lang = np.minimum.reduceat(d, starts)
+        per_lang[i] = np.inf
+        top = np.argpartition(per_lang, k)[:k]
+        top = top[np.argsort(per_lang[top])]
+        out[code] = [(codes[j], round(float(per_lang[j]), 1)) for j in top]
     return out

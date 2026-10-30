@@ -1,9 +1,10 @@
-"""Load ASJP word lists and pick one representative list per Glottolog language."""
+"""ASJP word lists, and picking the right one for a language."""
 
 from __future__ import annotations
 
 import csv
 import re
+import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,29 +27,36 @@ def normalise(form: str) -> str:
     return _MODIFIERS.sub("", form)
 
 
-def _squash(s: str) -> str:
-    return re.sub(r"[^a-z]", "", s.lower())
+def _tokens(s: str) -> tuple[str, ...]:
+    folded = unicodedata.normalize("NFKD", s.lower()).encode("ascii", "ignore").decode()
+    return tuple(re.findall(r"[a-z]+", folded))
 
 
-def _name_match(doculect: str, language_name: str, coded_to_language: bool) -> int:
-    """How much a doculect looks like the standard variety of its language.
+def _name_match(doculect: str, language_name: str, coded_to_target: bool) -> float:
+    """How much a doculect looks like the named variety.
 
-    ASJP often codes dialect lists (BRABANTIC, JAMTLANDIC) to the language's own
-    glottocode, so the glottocode alone can't tell us which list is "Dutch".
-    The doculect's name usually can: DUTCH, ENGLISH_2, STANDARD_GERMAN.
+    ASJP often codes dialect lists (BRABANTIC, KUNMING_MANDARIN) to the
+    language's own glottocode, so the glottocode alone can't tell us which list
+    is "Dutch" or "Mandarin Chinese". The doculect's name usually can.
     """
-    name, base = _squash(language_name), _squash(re.sub(r"_\d+$", "", doculect))
-    if base == name:
-        return 3 if not re.search(r"_\d+$", doculect) else 2
-    if name.startswith("standard") and base == name[len("standard"):]:
-        return 2
-    return 1 if coded_to_language else 0
+    numbered = re.search(r"_\d+$", doculect) is not None
+    doc = _tokens(re.sub(r"_\d+$", "", doculect))
+    name = _tokens(language_name)
+    if doc == name:  # DUTCH for Dutch; ENGLISH_2 scores a little lower
+        return 4 if not numbered else 3
+    if name[:1] == ("standard",) and doc == name[1:]:  # GERMAN for Standard German
+        return 3
+    if set(doc) <= set(name):  # MANDARIN for Mandarin Chinese
+        return 3 if not numbered else 2
+    if set(name) <= set(doc):  # NORWEGIAN_NYNORSK_TOTEN for Norwegian Nynorsk
+        return 1
+    return 0.5 if coded_to_target else 0
 
 
 @dataclass
 class Wordlist:
     doculect: str
-    glottocode: str  # language-level glottocode
+    glottocode: str  # as coded in ASJP
     words: dict[str, tuple[str, ...]]  # concept id -> forms (synonyms)
 
     def __len__(self) -> int:
@@ -65,48 +73,65 @@ def load_concepts(asjp_dir: Path) -> dict[str, str]:
     return out
 
 
-def load(asjp_dir: Path, glottolog: Glottolog) -> dict[str, Wordlist]:
-    """Return one word list per language-level glottocode.
+class ASJP:
+    """All usable ASJP lists, indexed by Glottolog languoid."""
 
-    Where ASJP has several doculects for a language (dialects, different
-    sources), we keep the one whose name marks it as the standard variety
-    (DUTCH over BRABANTIC), provided it is near-complete; failing that, the one
-    with the most of the 40 concepts attested.
-    """
-    concepts = load_concepts(asjp_dir)
-    cldf = asjp_dir / "cldf"
+    def __init__(self, asjp_dir: Path, glottolog: Glottolog):
+        self.glottolog = glottolog
+        concepts = load_concepts(asjp_dir)
+        cldf = asjp_dir / "cldf"
+        coded: dict[str, str] = {}
+        with open(cldf / "languages.csv", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if r["Glottocode"] in glottolog.language_of:
+                    coded[r["ID"]] = r["Glottocode"]
 
-    doc_lang: dict[str, str] = {}
-    doc_match: dict[str, int] = {}
-    with open(cldf / "languages.csv", encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            gc = r["Glottocode"]
-            if gc and gc in glottolog.language_of:
-                lang = glottolog.languages[glottolog.language_of[gc]]
-                doc_lang[r["ID"]] = lang.glottocode
-                doc_match[r["ID"]] = _name_match(r["ID"], lang.name, coded_to_language=lang.glottocode == gc)
+        words: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
+        with open(cldf / "forms.csv", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if r["Parameter_ID"] in concepts and r["Loan"] != "true" and r["Language_ID"] in coded:
+                    w = normalise(r["Form"])
+                    if w:
+                        words[r["Language_ID"]][r["Parameter_ID"]].append(w)
 
-    words: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
-    with open(cldf / "forms.csv", encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            if r["Parameter_ID"] not in concepts or r["Loan"] == "true":
+        self.by_glottocode: dict[str, list[Wordlist]] = defaultdict(list)
+        self.by_language: dict[str, list[Wordlist]] = defaultdict(list)
+        for doc, ws in words.items():
+            if len(ws) < MIN_CONCEPTS:
                 continue
-            if r["Language_ID"] not in doc_lang:
-                continue
-            w = normalise(r["Form"])
-            if w:
-                words[r["Language_ID"]][r["Parameter_ID"]].append(w)
+            wl = Wordlist(doc, coded[doc], {c: tuple(v) for c, v in ws.items()})
+            self.by_glottocode[wl.glottocode].append(wl)
+            self.by_language[glottolog.language_of[wl.glottocode]].append(wl)
 
-    def rank(doc: str) -> tuple:
-        # A near-complete list that looks like the standard language beats
-        # dialect lists; otherwise take the fullest list.
-        match = doc_match[doc] if len(words[doc]) >= GOOD_ENOUGH else 0
-        return (-match, -len(words[doc]), doc)
+    def select(self, glottocode: str | None, names: tuple[str, ...] = ()) -> Wordlist | None:
+        """The best list for a languoid.
 
-    best: dict[str, Wordlist] = {}
-    for doc in sorted(words, key=rank):
-        ws = words[doc]
-        if len(ws) < MIN_CONCEPTS or doc_lang[doc] in best:
-            continue
-        best[doc_lang[doc]] = Wordlist(doc, doc_lang[doc], {c: tuple(v) for c, v in ws.items()})
-    return best
+        For a dialect-level glottocode (LinguaMeta codes Norwegian Bokmål as a
+        dialect of Norwegian, for instance) we use a list coded to exactly that
+        dialect when there is one. Otherwise we choose among all lists for the
+        language: the one whose name marks it as the standard variety, provided
+        it is near-complete, failing that the fullest.
+        """
+        g = self.glottolog
+        if not glottocode or glottocode not in g.language_of:
+            return None
+        lang = g.language_of[glottocode]
+        specific = names + (g.names[glottocode],)  # the variety asked for
+        general = (g.names[lang],)  # the language it belongs to
+        if glottocode != lang and self.by_glottocode.get(glottocode):
+            pool, target = self.by_glottocode[glottocode], glottocode
+        else:
+            pool, target = self.by_language.get(lang, []), lang
+
+        def rank(wl: Wordlist) -> tuple:
+            if len(wl) < GOOD_ENOUGH:
+                return (0, 0, -len(wl), wl.doculect)
+            coded = wl.glottocode == target
+            return (
+                -max(_name_match(wl.doculect, n, coded) for n in specific),
+                -max(_name_match(wl.doculect, n, coded) for n in general),
+                -len(wl),
+                wl.doculect,
+            )
+
+        return min(pool, key=rank) if pool else None

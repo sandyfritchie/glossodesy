@@ -1,16 +1,18 @@
 from glossodesy.asjp import Wordlist, _name_match, normalise
-from glossodesy.distances import genealogical, ldnd
-from glossodesy.glottolog import Language
+from glossodesy.distances import genealogical, geographic, ldnd
+from glossodesy.languages import Language, Languages, MacrolanguageError
+from glossodesy.linguameta import Point, Record
 
 
-def lang(gc, path, category="Spoken_L1_Language"):
-    return Language(gc, gc, None, category, None, None, None, path[0] if path else None, tuple(path))
+def lang(code, lineage=None, points=(), scope="LANGUAGE", members=(), name=None):
+    rec = Record(code, name or code, None, None, None, scope, None, None, members=members, points=points)
+    return Language(code, rec, tuple(lineage) if lineage else None)
 
 
 def test_genealogical_siblings_and_strangers():
-    a = lang("a", ["fam", "sub"])
-    b = lang("b", ["fam", "sub"])
-    c = lang("c", ["other"])
+    a = lang("a", ["fam", "sub", "a"])
+    b = lang("b", ["fam", "sub", "b"])
+    c = lang("c", ["other", "c"])
     assert genealogical(a, a).distance == 0
     sib = genealogical(a, b)
     assert sib.common_ancestor == "sub" and 0 < sib.distance < 1
@@ -18,8 +20,29 @@ def test_genealogical_siblings_and_strangers():
     assert stranger.distance == 1 and stranger.common_ancestor is None
 
 
-def test_genealogical_not_applicable_for_pidgins():
-    assert genealogical(lang("a", ["fam"]), lang("p", ["pidg"], category="Pidgin")) is None
+def test_genealogical_not_applicable_without_lineage():
+    assert genealogical(lang("a", ["fam", "a"]), lang("p")) is None
+
+
+def test_geographic_uses_closest_pair_of_points():
+    a = lang("a", points=(Point(0, 0, "x", ""), Point(0, 10, "y", "")))
+    b = lang("b", points=(Point(0, 11, "z", ""),))
+    g = geographic(a, b)
+    assert g.points[0].locale == "y" and 100 < g.km < 120
+    assert geographic(a, lang("nowhere")) is None
+
+
+def test_resolve_macrolanguage_lists_members():
+    langs = Languages(
+        sw=lang("sw", scope="MACROLANGUAGE", members=("swh",), name="Swahili"),
+        swh=lang("swh", name="Swahili"),
+    )
+    assert langs.resolve("Swahili").code == "swh"  # name prefers the individual language
+    try:
+        langs.resolve("sw")
+        raise AssertionError("expected MacrolanguageError")
+    except MacrolanguageError as e:
+        assert "swh" in str(e)
 
 
 WORDS = {str(i): (w,) for i, w in enumerate(
@@ -50,5 +73,7 @@ def test_normalise_strips_asjp_modifiers():
 
 def test_name_match_prefers_standard_variety():
     assert _name_match("DUTCH", "Dutch", True) > _name_match("BRABANTIC", "Dutch", True)
-    assert _name_match("STANDARD_GERMAN", "Standard German", True) == 3
+    assert _name_match("STANDARD_GERMAN", "Standard German", True) == 4
     assert _name_match("ENGLISH", "English", True) > _name_match("ENGLISH_2", "English", True)
+    assert _name_match("MANDARIN", "Mandarin Chinese", True) > _name_match("KUNMING_MANDARIN", "Mandarin Chinese", True)
+    assert _name_match("NORWEGIAN_NYNORSK_TOTEN", "Norwegian Nynorsk", False) > 0

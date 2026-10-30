@@ -10,7 +10,8 @@ from rapidfuzz.distance import Levenshtein
 from rapidfuzz.process import cdist
 
 from .asjp import Wordlist
-from .glottolog import Language
+from .languages import Language
+from .linguameta import Point
 
 # --- Genealogical ---------------------------------------------------------
 
@@ -24,12 +25,12 @@ class Genealogical:
 def genealogical(a: Language, b: Language) -> Genealogical | None:
     """Tree distance: 1 - shared lineage / longer lineage.
 
-    Lineages are root-to-language paths in the Glottolog tree. Because Glottolog
+    Lineages are root-to-languoid paths in the Glottolog tree. Because Glottolog
     subgroups some families far more finely than others, the same number can
     mean different time depths in different families; it is a structural
     measure, not a dating.
     """
-    if not (a.is_genealogical and b.is_genealogical):
+    if a.lineage is None or b.lineage is None:
         return None
     la, lb = a.lineage, b.lineage
     shared = 0
@@ -47,14 +48,31 @@ def genealogical(a: Language, b: Language) -> Genealogical | None:
 EARTH_RADIUS_KM = 6371.0
 
 
-def geographic_km(a: Language, b: Language) -> float | None:
-    """Great-circle distance between Glottolog's representative points."""
-    if None in (a.lat, a.lon, b.lat, b.lon):
-        return None
-    p1, p2 = math.radians(a.lat), math.radians(b.lat)
-    dp, dl = p2 - p1, math.radians(b.lon - a.lon)
+def great_circle_km(p: Point, q: Point) -> float:
+    p1, p2 = math.radians(p.lat), math.radians(q.lat)
+    dp, dl = p2 - p1, math.radians(q.lon - p.lon)
     h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(h))
+
+
+@dataclass
+class Geographic:
+    km: float
+    points: tuple[Point, Point]  # the closest pair of locations
+
+
+def geographic(a: Language, b: Language) -> Geographic | None:
+    """Distance between the closest pair of LinguaMeta locations.
+
+    LinguaMeta gives a point per country a language is spoken in, so a
+    language with several points is as close as its nearest one.
+    """
+    if not a.points or not b.points:
+        return None
+    return min(
+        (Geographic(great_circle_km(p, q), (p, q)) for p in a.points for q in b.points),
+        key=lambda g: g.km,
+    )
 
 
 # --- Lexical (LDND) -------------------------------------------------------
