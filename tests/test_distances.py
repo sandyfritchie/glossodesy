@@ -132,3 +132,11 @@ def test_canonical_scripts_skip_romanisations():
     assert canonical_scripts(hindi) == ("deva",)
     unmarked = {"language_script_locale": [{"script": {"iso_15924_code": "latn"}}]}
     assert canonical_scripts(unmarked) == ("latn",)
+
+
+def test_glottography_simplify_winds_exterior_clockwise():
+    from shapely.geometry import Polygon
+    from glossodesy.glottography import simplify
+    ccw = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])  # counter-clockwise, as RFC 7946 likes
+    assert ccw.exterior.is_ccw
+    assert not simplify(ccw).exterior.is_ccw  # d3 needs clockwise exteriors

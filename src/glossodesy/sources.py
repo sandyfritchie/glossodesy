@@ -59,6 +59,17 @@ SOURCES: dict[str, Source] = {
             "Language Resources and Evaluation. https://doi.org/10.1007/s10579-019-09480-6"
         ),
     ),
+    "glottography": Source(
+        key="glottography",
+        repo="Glottography/asher2007world",
+        tag="v2.0",
+        licence="CC-BY-4.0",
+        citation=(
+            "Glottography dataset derived from Asher, R. E. & Christopher J. Moseley (eds.) 2007. "
+            "Atlas of the World's Languages. 2nd edn. Routledge. https://doi.org/10.5281/zenodo.15287257"
+        ),
+        subdir="cldf/traditional",
+    ),
     "asjp": Source(
         key="asjp",
         repo="lexibank/asjp",

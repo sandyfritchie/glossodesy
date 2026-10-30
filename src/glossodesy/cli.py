@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import asjp, calibrate, distances, glottolog, languages, linguameta, neighbours, northeuralex
+from . import asjp, calibrate, distances, glottography, glottolog, languages, linguameta, neighbours, northeuralex
 from .sources import DEFAULT_RAW_DIR, SOURCES, fetch, source_dir
 
 DEFAULT_BUILD_DIR = Path("data/build")
@@ -61,6 +61,21 @@ class Data:
                 matched = northeuralex.match(wl, cand)
                 if matched:
                     out[code] = matched
+        return out
+
+    @cached_property
+    def areas(self) -> dict:
+        """BCP-47 code -> Glottography area, where the atlas has one for the
+        language (or for the language a dialect-level glottocode belongs to)."""
+        by_gc = glottography.load(source_dir("glottography", self.raw_dir))
+        out = {}
+        for code, lang in self.languages.items():
+            gc = lang.glottocode
+            if lang.is_macrolanguage or not gc:
+                continue
+            area = by_gc.get(gc) or by_gc.get(self.glottolog.language_of.get(gc, ""))
+            if area is not None:
+                out[code] = area
         return out
 
     @cached_property
@@ -193,6 +208,7 @@ def cmd_build(args) -> None:
             "points": [[p.lat, p.lon, p.locale, p.source] for p in l.points],
             "lineage": list(l.lineage) if l.lineage else None,
             "asjp": wls[code].doculect if code in wls else None,
+            "area": code in d.areas or None,
         }
         for code, l in langs.items()
     })
@@ -202,6 +218,13 @@ def cmd_build(args) -> None:
     dump("concepts.json", asjp.load_concepts(source_dir("asjp", d.raw_dir)))
     dump("native.json", d.native)
     dump("scripts.json", linguameta.script_names(source_dir("linguameta", d.raw_dir)))
+    print("language areas…")
+    (out / "areas").mkdir(exist_ok=True)
+    for letter, geoms in glottography.shards(d.areas).items():
+        path = out / "areas" / f"{letter}.json"
+        path.write_text(json.dumps(geoms, separators=(",", ":")), encoding="utf-8")
+    sizes = [p.stat().st_size for p in (out / "areas").glob("*.json")]
+    print(f"  wrote {len(sizes)} area files under {out / 'areas'} ({sum(sizes) / 1e6:.1f} MB, largest {max(sizes) / 1e6:.2f} MB)")
     print("geographic neighbours…")
     dump("neighbours_geographic.json", neighbours.geographic(langs, k=args.k))
     print("chance baseline for LDND…")

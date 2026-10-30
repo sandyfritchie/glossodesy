@@ -192,6 +192,10 @@ section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64
 .map .border { fill: none; stroke: var(--land-edge); stroke-width: 0.8; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .map .arc { fill: none; stroke: var(--ink-soft); stroke-width: 1.2; stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; opacity: 0.8; }
 .map .tint-a { fill: var(--a-wash); }
+.map .area { stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.map .area-a { fill: var(--flag); fill-opacity: 0.32; stroke: var(--flag); }
+.map .area-b { fill: var(--survey); fill-opacity: 0.32; stroke: var(--survey); }
+.map-key .map-source { color: var(--ink-faint); flex-basis: 100%; }
 .map .tint-b { fill: var(--b-wash); }
 .map .home-a-stop { stop-color: var(--flag); }
 .map .home-b-stop { stop-color: var(--survey); }
@@ -275,7 +279,7 @@ footer.about dd { margin: 2px 0 0; }
       <p>“How similar are these languages?” has more than one answer, so each is measured separately and none is folded into a single score.</p>
       <p><b>Family tree</b> is the position of both languages in Glottolog’s classification: 0 means the same language, 1 means no known common ancestor. It measures structure, not time; some families are subdivided far more finely than others.</p>
       <p><b>Core words</b> compares 40 basic words (I, two, water, eye…) using LDND, a sound-based edit distance corrected for chance resemblance. Around 1.0 is what unrelated languages score, so the shaded band on the scale shows the range of 98% of unrelated pairs.</p>
-      <p><b>Distance</b> is between where each language is traditionally spoken, not everywhere it is spoken today, so English is placed in England and Spanish in Spain. The distance is approximate, and the map highlights an area rather than a point.</p>
+      <p><b>Distance</b> is between where each language is traditionally spoken, not everywhere it is spoken today, so English is placed in England and Spanish in Spain. For about 60% of languages this is an area from the <i>Atlas of the World’s Languages</i>, and the distance is the gap between the areas at their closest, or that they overlap. For the rest it is an approximate place.</p>
       <p><b>Borders</b> follow Natural Earth, which draws the boundaries of de facto control. Areas whose status is disputed are hatched and not counted as part of any country.</p>
     </div>
     <div>
@@ -284,6 +288,7 @@ footer.about dd { margin: 2px 0 0; }
         <dt>LinguaMeta</dt><dd>Language names, codes, speaker numbers and locations. CC BY-SA 4.0.</dd>
         <dt>Glottolog 5.3</dt><dd>Language classification. CC BY 4.0.</dd>
         <dt>ASJP 21.1</dt><dd>40-item word lists. CC BY 4.0.</dd>
+        <dt>Glottography</dt><dd>Areas where about 4,400 languages are traditionally spoken, digitised from the <i>Atlas of the World’s Languages</i> (Asher &amp; Moseley 2007). CC BY 4.0.</dd>
         <dt>Natural Earth</dt><dd>Coastlines, borders and disputed areas for the map. Public domain.</dd>
         <dt>NorthEuraLex</dt><dd>Spellings of those words in each language’s own writing system, for 107 languages. CC BY 4.0.</dd>
       </dl>
@@ -649,18 +654,30 @@ async function renderCompare(a, b) {
     value: lex ? `LDND ${lex.ldnd.toFixed(2)}` : null, ends: ["identical", "unrelated"],
   }));
 
-  // Distance
-  const d = A.origin && B.origin ? km(A.origin, B.origin) : null;
-  let dv;
-  if (d == null) dv = `There’s no location for ${esc((!A.origin ? A : B).name)}.`;
-  else if (d < 1) dv = "They come from the same place.";
+  // Distance: between the atlas areas where the languages have them,
+  // otherwise between the approximate places they're traditionally spoken.
+  const [ga, gb] = await Promise.all([areaOf(a), areaOf(b)]);
+  const usesArea = !!(ga || gb);
+  const located = (L, g) => g || (L.origin ? { type: "Point", coordinates: [L.origin[1], L.origin[0]] } : null);
+  const ra = located(A, ga), rb = located(B, gb);
+  const rel = ra && rb ? geoRelation(ra, rb) : null;
+  const d = rel ? rel.km : null;
+  const where = "The places where they are traditionally spoken";
+  let dv, value = null;
+  if (!rel) dv = `There’s no location for ${esc((!ra ? A : B).name)}.`;
+  else if (a === b) dv = "These are the same language.";
+  else if (rel.kind === "overlap") { dv = `${where} overlap.`; value = "overlap"; }
+  else if (rel.kind === "adjacent") { dv = `${where} are next to each other.`; value = "adjacent"; }
   else {
-    const ra = regionName(A.origin[2]), rb = regionName(B.origin[2]);
-    dv = `The places where they are traditionally spoken are ${d < 50 ? "" : "approximately "}<b class="figure">${roughKm(d)}</b> apart${ra === rb ? `, both in ${esc(placeName(A.origin[2]))}` : `, in ${esc(placeName(A.origin[2]))} and ${esc(placeName(B.origin[2]))}`}.`;
+    const pa = A.origin && regionName(A.origin[2]), pb = B.origin && regionName(B.origin[2]);
+    const inPlaces = usesArea || !pa || !pb ? "" : pa === pb ? `, both in ${esc(placeName(A.origin[2]))}`
+      : `, in ${esc(placeName(A.origin[2]))} and ${esc(placeName(B.origin[2]))}`;
+    dv = `${where} are ${d < 50 ? "" : "approximately "}<b class="figure">${roughKm(d)}</b> apart${usesArea ? " at their closest" : ""}${inPlaces}.`;
+    value = d < 50 ? "<50 km" : `~${shortKm(d)}`;
   }
   staffs.append(staff({
-    title: "Distance", sub: "between where each is traditionally spoken, on a log scale", verdict: dv, empty: d == null,
-    x: d != null ? geoX(d) : null, value: d != null ? (d < 50 ? "<50 km" : `~${shortKm(d)}`) : null, ends: ["1 km", "20,000 km"],
+    title: "Distance", sub: usesArea ? "between the areas where each is traditionally spoken, on a log scale" : "between where each is traditionally spoken, on a log scale",
+    verdict: dv, empty: !rel, x: rel ? (rel.kind === "apart" ? geoX(d) : 0) : null, value, ends: ["1 km", "20,000 km"],
   }));
 
   // Details
@@ -670,7 +687,7 @@ async function renderCompare(a, b) {
       const [concepts, native] = await Promise.all([load("concepts.json"), load("native.json")]);
       main.append(wordsSection(A, B, wa, wb, lex, concepts, native));
     }
-    if (d != null) { const map = await mapSection(A, B, d); if (map) { main.append(map); sizeMapMarks(map); } }
+    if (rel && A.origin && B.origin) { const map = await mapSection(A, B, d, ga, gb); if (map) { main.append(map); sizeMapMarks(map); } }
   }
 }
 
@@ -728,6 +745,53 @@ function sizeMapMarks(section) {
   });
 }
 
+/** A language's area from the atlas (via Glottography), or null. */
+async function areaOf(code) {
+  const L = LANGS[code];
+  if (!L || !L.area) return null;
+  try { return (await load(`areas/${code[0]}.json`))[code] || null; } catch { return null; }
+}
+
+function vertices(geom) {
+  const out = [];
+  const walk = (c) => (typeof c[0] === "number" ? out.push(c) : c.forEach(walk));
+  walk(geom.coordinates);
+  return out;
+}
+const thin = (pts, max) => pts.length <= max ? pts : pts.filter((_, i) => i % Math.ceil(pts.length / max) === 0);
+
+/**
+ * How two locations (areas or points) relate: overlapping, next to each other
+ * (within 25 km, the atlas's resolution), or apart, with the gap at their
+ * closest points in km. Without d3 (it loads from a CDN) only points work.
+ */
+function geoRelation(ga, gb) {
+  if (!window.d3) {
+    const p = vertices(ga)[0], q = vertices(gb)[0];
+    return { kind: "apart", km: km([p[1], p[0]], [q[1], q[0]]) };
+  }
+  const fa = { type: "Feature", geometry: ga }, fb = { type: "Feature", geometry: gb };
+  const va = vertices(ga), vb = vertices(gb);
+  const ta = thin(va, 1500), tb = thin(vb, 1500);
+  const near = (p, pts) => { let m = Infinity; for (const q of pts) m = Math.min(m, d3.geoDistance(p, q)); return m * 6371; };
+  // Overlap means points well inside the other area, not on a shared border:
+  // atlas areas that merely meet share vertices along the boundary.
+  const deepInside = (pts, f, edge) => {
+    if (f.geometry.type === "Point") return 0;
+    const sample = thin(pts, 800);
+    return sample.filter((p) => d3.geoContains(f, p) && near(p, edge) > 10).length;
+  };
+  const points = (g) => g.type === "Point";
+  if (points(ga) && !points(gb) && d3.geoContains(fb, va[0])) return { kind: "overlap", km: 0 };
+  if (points(gb) && !points(ga) && d3.geoContains(fa, vb[0])) return { kind: "overlap", km: 0 };
+  if (deepInside(va, fb, tb) >= 3 || deepInside(vb, fa, ta) >= 3) return { kind: "overlap", km: 0 };
+  let best = Infinity;
+  for (const p of ta) for (const q of tb) { const x = d3.geoDistance(p, q); if (x < best) best = x; }
+  const dist = best * 6371;
+  const anyArea = ga.type !== "Point" || gb.type !== "Point";
+  return { kind: anyArea && dist < 25 ? "adjacent" : "apart", km: dist };
+}
+
 let MAP;
 async function loadMap() {
   if (MAP) return MAP;
@@ -747,7 +811,7 @@ async function loadMap() {
 }
 
 /** The map section, or null if it can't be drawn (then the page simply has no map). */
-async function mapSection(A, B, d) {
+async function mapSection(A, B, d, ga, gb) {
   if (!window.d3 || !window.topojson) return null;
   let M;
   try { M = await loadMap(); } catch { return null; }
@@ -766,8 +830,9 @@ async function mapSection(A, B, d) {
   const frame = d3.geoCircle().center(mid).radius(radius)();
   const ids = (L) => new Set((L.countries || []).map((c) => M.iso[c]).filter(Boolean));
   const spokenIn = new Set([...ids(A), ...ids(B)]);
+  const areaFeature = (g) => g && { type: "Feature", geometry: g };
   const extent = { type: "FeatureCollection", features: [{ type: "Feature", geometry: frame },
-    ...M.countries.filter((f) => spokenIn.has(f.id))] };
+    ...M.countries.filter((f) => spokenIn.has(f.id)), ...[areaFeature(ga), areaFeature(gb)].filter(Boolean)] };
   const proj = d3.geoEqualEarth().rotate([-mid[0], 0]).fitExtent([[40, 30], [W - 40, H - 30]], extent);
   const path = d3.geoPath(proj);
   const svg = d3.create("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("role", "img")
@@ -807,19 +872,32 @@ async function mapSection(A, B, d) {
     const [x, y] = proj(p), [x2, y2] = proj([p[0], p[1] + 2.7]); // ~300 km north
     return Math.hypot(x2 - x, y2 - y);
   };
-  const marks = [[A, pa, "a"], [B, pb, "b"]];
-  for (const [, p, key] of marks) {
+  // Where the atlas has an area, draw it; otherwise a circle that fades out.
+  // The larger area goes underneath, so one inside another (Basque within
+  // Spanish) stays visible.
+  const areaLayer = svg.append("g");
+  const drawn = [];
+  const marks = [[A, pa, "a", ga], [B, pb, "b", gb]].map(([L, p, key, g]) => {
+    if (g) {
+      const f = areaFeature(g);
+      drawn.push([d3.geoArea(f), f, key]);
+      const c = path.centroid(f);
+      return [L, isFinite(c[0]) ? c : proj(p), key, 0];
+    }
     const [x, y] = proj(p);
     homes.append("circle").attr("class", "home").attr("cx", x).attr("cy", y)
       .attr("data-r", projectedRadius(p)).attr("r", projectedRadius(p)).attr("fill", `url(#${uid}-${key})`);
+    return [L, [x, y], key, projectedRadius(p)];
+  });
+  for (const [, f, key] of drawn.sort((x, y) => y[0] - x[0])) {
+    areaLayer.append("path").datum(f).attr("class", `area area-${key}`).attr("d", path);
   }
-  svg.append("path").datum({ type: "LineString", coordinates: [pa, pb] }).attr("class", "arc").attr("d", path);
-  // Labels sit on the outer side of each patch, so close pairs don't collide.
-  const xa = proj(pa)[0], xb = proj(pb)[0];
-  for (const [L, p, key] of marks) {
-    const [x, y] = proj(p);
+  if (!ga && !gb) svg.append("path").datum({ type: "LineString", coordinates: [pa, pb] }).attr("class", "arc").attr("d", path);
+  // Labels sit on the outer side of each mark, so close pairs don't collide.
+  const [xa, xb] = [marks[0][1][0], marks[1][1][0]];
+  for (const [L, [x, y], key, r] of marks) {
     const right = key === "a" ? xa >= xb : xb > xa;
-    svg.append("text").attr("class", "lbl").attr("data-x", x).attr("data-y", y).attr("data-r", projectedRadius(p))
+    svg.append("text").attr("class", "lbl").attr("data-x", x).attr("data-y", y).attr("data-r", r)
       .attr("text-anchor", right ? "start" : "end").attr("x", x).attr("y", y).text(L.name);
   }
   box.append(svg.node());
@@ -827,7 +905,8 @@ async function mapSection(A, B, d) {
   const key = s.querySelector(".map-key");
   key.innerHTML = `<span><i class="sw sw-a"></i>Where ${esc(A.name)} is spoken today</span>
     <span><i class="sw sw-b"></i>Where ${esc(B.name)} is spoken today</span>
-    ${disputed.length ? `<span><i class="sw sw-hatch"></i>Disputed area, not assigned to any country</span>` : ""}`;
+    ${disputed.length ? `<span><i class="sw sw-hatch"></i>Disputed area, not assigned to any country</span>` : ""}
+    ${ga || gb ? `<span class="map-source">Outlined areas: <i>Atlas of the World’s Languages</i> (Asher &amp; Moseley 2007), via Glottography.</span>` : ""}`;
   return s;
 }
 
