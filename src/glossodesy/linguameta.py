@@ -41,6 +41,7 @@ class Record:
     aliases: tuple[str, ...] = ()  # other English names (Cantonese for Yue Chinese)
     scripts: tuple[str, ...] = ()  # ISO 15924, the ones LinguaMeta marks canonical
     official: tuple[str, ...] = ()  # countries where it has official status (CLDR)
+    locale_speakers: dict[str, int] = field(default_factory=dict)  # country -> speakers there
 
 
 def english_aliases(detail: dict, canonical: str) -> tuple[str, ...]:
@@ -93,6 +94,17 @@ def script_names(linguameta_dir: Path) -> dict[str, str]:
     return out
 
 
+def locale_speakers(detail: dict) -> dict[str, int]:
+    """Speakers per country (the largest figure where it's repeated per script)."""
+    out: dict[str, int] = {}
+    for e in detail.get("language_script_locale", []):
+        n = (e.get("speaker_data") or {}).get("number_of_speakers")
+        cc = (e.get("locale") or {}).get("iso_3166_code")
+        if n and cc and cc.isalpha():
+            out[cc] = max(out.get(cc, 0), int(n))
+    return out
+
+
 def load(linguameta_dir: Path) -> dict[str, Record]:
     table = {
         r["bcp_47_code"]: r
@@ -132,5 +144,6 @@ def load(linguameta_dir: Path) -> dict[str, Record]:
             scripts=canonical_scripts(detail),
             official=tuple(sorted({e["locale"]["iso_3166_code"] for e in detail.get("language_script_locale", [])
                                    if "locale" in e and (e.get("official_status") or {}).get("has_official_status")})),
+            locale_speakers=locale_speakers(detail),
         )
     return out

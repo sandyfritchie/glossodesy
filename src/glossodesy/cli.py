@@ -186,6 +186,7 @@ def cmd_build(args) -> None:
             "scripts": list(l.record.scripts) or None,
             "countries": [c for c in l.record.locales if c.isalpha()] or None,
             "official": list(l.record.official) or None,
+            "country_speakers": l.record.locale_speakers or None,
             "speakers": l.record.speakers,
             "endangerment": l.record.endangerment,
             "origin": [l.origin.lat, l.origin.lon, l.origin.locale] if l.origin else None,
