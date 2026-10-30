@@ -76,7 +76,10 @@ class Data:
             area = by_gc.get(gc) or by_gc.get(self.glottolog.language_of.get(gc, ""))
             if area is not None:
                 out[code] = area
-        return out
+        from .geo import country_of
+        trimmed, n = glottography.drop_outliers(out, country_of)
+        print(f"  dropped {n} small, far-flung area fragments in other countries")
+        return trimmed
 
     @cached_property
     def null(self) -> np.ndarray:

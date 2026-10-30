@@ -66,8 +66,12 @@ than inventory overlap).
   time of contact for the Americas and Australia, the atlas's contemporary
   areas elsewhere. They cover ~4,400 of LinguaMeta's languages; some major
   national languages (Indonesian, Punjabi, Filipino) have no area and fall back
-  to a single place. The atlas sometimes includes minority communities (Korean
-  pockets in Japan), so areas reflect its editors' choices. Simplified to ~2 km
+  to a single place. The atlas sometimes includes far-flung communities; small
+  fragments (under 10% of a language's area) more than ~500 km from its main
+  area *and* in another country are dropped (English around Johannesburg,
+  Korean in central Japan, German in Transylvania, Mandarin in Taiwan), while
+  same-country islands stay (the Canaries, the Azores). Nearer pockets remain
+  (Korean in Kyushu), so areas still reflect the atlas editors' choices. Simplified to ~2 km
   for the web; two areas count as overlapping only where one reaches more than
   10 km inside the other, and as adjacent within 25 km.
 - **Missing points.** LinguaMeta has no point for ~1,000 languages. All of them
