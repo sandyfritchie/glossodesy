@@ -63,10 +63,22 @@ a:hover { color: var(--flag); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .wrap { max-width: 1040px; margin: 0 auto; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
-header.site { display: flex; justify-content: space-between; align-items: baseline; padding: 22px 0 0; }
+header.site { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 18px 0 0; }
+header.site nav { margin-left: auto; }
+.site-search { position: relative; flex: 0 1 320px; }
+.site-search input {
+  width: 100%; font: 400 16px/1.3 var(--sans); color: var(--ink);
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 8px 10px 8px 32px;
+}
+.site-search input::placeholder { color: var(--ink-faint); }
+.site-search input:focus { outline: none; border-color: var(--survey); box-shadow: 0 0 0 3px var(--survey-wash); }
+.site-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--ink-faint); fill: none; stroke-width: 2; pointer-events: none; }
+.site-search .suggest { right: 0; min-width: 0; }
 .wordmark { font: italic 500 20px/1 var(--serif); color: var(--ink); text-decoration: none; letter-spacing: 0.01em; }
 .wordmark:hover { color: var(--ink); }
 header.site nav a { font-size: 15px; margin-left: 18px; }
+header.site nav a:first-child { margin-left: 0; }
 
 /* ---- The question ---------------------------------------------------- */
 .question {
@@ -156,9 +168,11 @@ section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64
 .words { width: 100%; border-collapse: collapse; font-size: 16px; }
 .words th { text-align: left; font-weight: 700; padding: 8px 10px; border-bottom: 2px solid var(--ink-soft); font-size: 15px; }
 .words th.lang { font: italic 500 18px/1.2 var(--serif); }
+.words th.lang .endo { font: 400 15px/1.2 var(--sans); color: var(--ink-faint); margin-left: 4px; }
+.words .native { display: inline-block; font: 400 16px/1.3 var(--sans); color: var(--ink-soft); margin-left: 6px; }
 .words td { padding: 6px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
 .words td.gloss { color: var(--ink-soft); width: 22%; }
-.words td.form { font-family: var(--mono); font-size: 15px; width: 30%; overflow-wrap: anywhere; }
+.words td.form { font-family: var(--mono); font-size: 15px; width: 30%; overflow-wrap: break-word; }
 .words td.sim { width: 18%; }
 .words td.missing { color: var(--ink-faint); font-family: var(--sans); font-style: italic; }
 .simbar { height: 8px; background: var(--survey-wash); border-radius: 1px; position: relative; margin-top: 7px; }
@@ -210,6 +224,7 @@ footer.about dd { margin: 2px 0 0; }
 @media (max-width: 760px) {
   body { font-size: 16px; }
   .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .site-search { order: 3; flex-basis: 100%; }
   .question { margin-top: 36px; }
   .staff { grid-template-columns: 1fr; }
   .branches, .unrelated, .cols, footer.about { grid-template-columns: 1fr; }
@@ -225,6 +240,12 @@ footer.about dd { margin: 2px 0 0; }
 <div class="wrap">
   <header class="site">
     <a class="wordmark" href="#">glossodesy</a>
+    <div class="site-search" role="search">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l4 4"></path></svg>
+      <label class="sr-only" for="site-search">Find a language</label>
+      <input id="site-search" type="search" placeholder="Find a language" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-site" autocomplete="off" spellcheck="false">
+      <ul class="suggest" id="sug-site" role="listbox" hidden></ul>
+    </div>
     <nav><a href="#about">About</a><a href="https://github.com/sandyfritchie/glossodesy">Code</a></nav>
   </header>
   <main id="main"><p class="status">Loading languages…</p></main>
@@ -242,6 +263,7 @@ footer.about dd { margin: 2px 0 0; }
         <dt>LinguaMeta</dt><dd>Language names, codes, speaker numbers and locations. CC BY-SA 4.0.</dd>
         <dt>Glottolog 5.3</dt><dd>Language classification. CC BY 4.0.</dd>
         <dt>ASJP 21.1</dt><dd>40-item word lists. CC BY 4.0.</dd>
+        <dt>NorthEuraLex</dt><dd>Spellings of those words in each language’s own writing system, for 107 languages. CC BY 4.0.</dd>
       </dl>
       <p style="margin-top:16px">The data on this site is CC BY-SA 4.0. The code is on <a href="https://github.com/sandyfritchie/glossodesy">GitHub</a>.</p>
     </div>
@@ -362,7 +384,7 @@ function search(q) {
 }
 
 /** Wire a combobox: an <input> with a suggestion list. onPick(code) on choice. */
-function combobox(input, list, onPick) {
+function combobox(input, list, onPick, { macroPage = false } = {}) {
   let items = [], active = -1;
   const measure = input.closest("h1")?.querySelector(".measure");
   const fit = () => {
@@ -395,7 +417,7 @@ function combobox(input, list, onPick) {
   }
   function choose(i) {
     const e = items[i]; if (!e) return;
-    if (e.l.scope === "macrolanguage") {
+    if (e.l.scope === "macrolanguage" && !macroPage) {
       const members = (e.l.members || []).filter((m) => LANGS[m]).map((m) => INDEX.find((x) => x.code === m))
         .sort((a, b) => (b.l.speakers || 0) - (a.l.speakers || 0)).slice(0, 8);
       input.value = ""; fit();
@@ -423,6 +445,8 @@ function combobox(input, list, onPick) {
 const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ancestorName = (gc) => ANCESTORS[gc] || gc;
+const endo = (L) => L.endonym && L.endonym.toLowerCase() !== L.name.toLowerCase()
+  ? `<span class="endo" lang="${esc(L.code || "")}">(${esc(L.endonym)})</span>` : "";
 const pct = (x) => x < 0.001 ? "fewer than 1 in 1,000" : x < 0.01 ? `${(x * 100).toFixed(1)}%` : `${Math.round(x * 100)}%`;
 const kmText = (d) => d < 10 ? `${d.toFixed(1)} km` : `${fmt.format(Math.round(d / (d > 1000 ? 10 : 1)) * (d > 1000 ? 10 : 1))} km`;
 const geoX = (d) => Math.min(1, Math.log10(Math.max(d, 1)) / Math.log10(20000));
@@ -532,7 +556,10 @@ async function renderCompare(a, b) {
   // Details
   if (a !== b) {
     if (g) main.append(lineageSection(A, B, g));
-    if (lex && !(A.asjp && A.asjp === B.asjp)) main.append(wordsSection(A, B, wa, wb, lex, await load("concepts.json")));
+    if (lex && !(A.asjp && A.asjp === B.asjp)) {
+      const [concepts, native] = await Promise.all([load("concepts.json"), load("native.json")]);
+      main.append(wordsSection(A, B, wa, wb, lex, concepts, native));
+    }
     if (d != null) main.append(await mapSection(A, B, d));
   }
 }
@@ -557,19 +584,23 @@ function lineageSection(A, B, g) {
   return s;
 }
 
-function wordsSection(A, B, wa, wb, lex, concepts) {
+function wordsSection(A, B, wa, wb, lex, concepts, native) {
   const s = el(`<section class="detail"><h3>The 40 words, side by side</h3>
     <p class="sub">The bar shows how similar each pair of words is in sound. Pink rows are close enough to be likely cognates or loans.</p></section>`);
   const rows = Object.keys(concepts).sort((x, y) => +x - +y).map((c) => {
     const fa = wa[c], fb = wb[c];
     const sim = c in lex.perConcept ? 1 - lex.perConcept[c] : null;
     const close = sim != null && sim >= 0.6;
-    const cell = (f) => f ? `<td class="form">${esc(f.join(", "))}</td>` : `<td class="form missing">not recorded</td>`;
-    return `<tr class="${close ? "close" : ""}"><td class="gloss">${esc(concepts[c])}</td>${cell(fa)}${cell(fb)}
+    const cell = (f, L) => {
+      if (!f) return `<td class="form missing">not recorded</td>`;
+      const sp = native[L.code] && native[L.code][c];
+      return `<td class="form">${esc(f.join(", "))}${sp ? `<span class="native" lang="${esc(L.code)}">(${esc(sp)})</span>` : ""}</td>`;
+    };
+    return `<tr class="${close ? "close" : ""}"><td class="gloss">${esc(concepts[c])}</td>${cell(fa, A)}${cell(fb, B)}
       <td class="sim">${sim == null ? "" : `<div class="simbar" title="${Math.round(sim * 100)}% similar"><i style="width:${(sim * 100).toFixed(0)}%"></i></div>`}</td></tr>`;
   }).join("");
-  s.append(el(`<table class="words"><thead><tr><th>Meaning</th><th class="lang">${esc(A.name)}</th><th class="lang">${esc(B.name)}</th><th class="sim"><span class="sr-only">Similarity</span></th></tr></thead><tbody>${rows}</tbody></table>`));
-  s.append(el(`<p class="words-note">Words are written in ASJP’s simplified 41-symbol transcription, not IPA: <code>3</code> is a schwa, <code>7</code> a glottal stop, <code>S</code> and <code>C</code> are “sh” and “ch”. Lists: ${esc(A.asjp)} and ${esc(B.asjp)} from ASJP.</p>`));
+  s.append(el(`<table class="words"><thead><tr><th>Meaning</th><th class="lang">${esc(A.name)}${endo(A)}</th><th class="lang">${esc(B.name)}${endo(B)}</th><th class="sim"><span class="sr-only">Similarity</span></th></tr></thead><tbody>${rows}</tbody></table>`));
+  s.append(el(`<p class="words-note">Words are written in ASJP’s simplified 41-symbol transcription, not IPA: <code>3</code> is a schwa, <code>7</code> a glottal stop, <code>S</code> and <code>C</code> are “sh” and “ch”. Lists: ${esc(A.asjp)} and ${esc(B.asjp)} from ASJP.${native[A.code] || native[B.code] ? " Spellings in brackets are from NorthEuraLex, shown where it has the same word." : ""}</p>`));
   return s;
 }
 
@@ -716,7 +747,12 @@ function route() {
     document.getElementById("main").innerHTML = `<p class="status">The language data didn’t load: ${esc(e.message)}. Reload the page to try again.</p>`;
     return;
   }
+  for (const [code, l] of Object.entries(LANGS)) l.code = code;
   INDEX = buildIndex();
+  const siteSearch = document.getElementById("site-search");
+  combobox(siteSearch, document.getElementById("sug-site"), (code) => {
+    siteSearch.value = ""; siteSearch.blur(); go(code);
+  }, { macroPage: true });
   window.addEventListener("hashchange", () => { if (location.hash !== "#about") route(); });
   route();
 })();

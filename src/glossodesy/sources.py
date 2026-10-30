@@ -49,6 +49,16 @@ SOURCES: dict[str, Source] = {
             "Glottolog 5.3. Leipzig: Max Planck Institute for Evolutionary Anthropology."
         ),
     ),
+    "northeuralex": Source(
+        key="northeuralex",
+        repo="lexibank/northeuralex",
+        tag="v4.1",
+        licence="CC-BY-4.0",
+        citation=(
+            "Dellert, Johannes, Thora Daneyko, Alla Münch et al. 2020. NorthEuraLex (version 0.9). "
+            "Language Resources and Evaluation. https://doi.org/10.1007/s10579-019-09480-6"
+        ),
+    ),
     "asjp": Source(
         key="asjp",
         repo="lexibank/asjp",
