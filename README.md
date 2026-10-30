@@ -80,6 +80,13 @@ glossodesy build                       # JSON for the website, into data/build/
 
 Languages can be given as BCP-47 codes, ISO 639-3 codes, glottocodes or exact English names.
 
+The website shows each ASJP word with its spelling in the language's own
+writing system where NorthEuraLex (107 languages, mostly northern Eurasia) has
+the same word. NorthEuraLex's IPA is converted roughly to ASJP symbols and
+compared by broad sound classes, accepting a stem match for citation forms
+(Turkish *gelmek* for ASJP *gel*); about 91% of words match, and unmatched
+ones are left without a spelling rather than risk showing a different word.
+
 ## Website
 
 `site/index.html` is a static page that reads the JSON from `glossodesy build`.
@@ -100,8 +107,8 @@ Pages on every push to `main`.
 ## Data and licences
 
 Upstream data is pinned in `src/glossodesy/sources.py`. LinguaMeta is
-CC BY-SA 4.0, so the files written by `glossodesy build` are too. Glottolog
-and ASJP are CC BY 4.0. Please cite them:
+CC BY-SA 4.0, so the files written by `glossodesy build` are too. Glottolog,
+ASJP and NorthEuraLex are CC BY 4.0. Please cite them:
 
 - Ritchie, Sandy, Daan van Esch, Uche Okonkwo, Shikhar Vashishth & Emily
   Drummond. 2024. LinguaMeta: Unified metadata for thousands of languages.
@@ -110,6 +117,9 @@ and ASJP are CC BY 4.0. Please cite them:
   *Glottolog 5.3*. Leipzig: Max Planck Institute for Evolutionary Anthropology.
 - Wichmann, Søren, Eric W. Holman & Cecil H. Brown (eds.). *The ASJP Database*
   (version 21.1).
+- Dellert, Johannes, Thora Daneyko, Alla Münch et al. 2020. NorthEuraLex
+  (version 0.9). *Language Resources and Evaluation*.
+  https://doi.org/10.1007/s10579-019-09480-6
 
 Method reference: Wichmann, S., Holman, E. W., Bakker, D. & Brown, C. H. (2010).
 Evaluating linguistic distance measures. *Physica A* 389: 3632–3639.

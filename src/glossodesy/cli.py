@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import asjp, calibrate, distances, glottolog, languages, linguameta, neighbours
+from . import asjp, calibrate, distances, glottolog, languages, linguameta, neighbours, northeuralex
 from .sources import DEFAULT_RAW_DIR, SOURCES, fetch, source_dir
 
 DEFAULT_BUILD_DIR = Path("data/build")
@@ -42,6 +42,25 @@ class Data:
             wl = index.select(lang.glottocode, names=(lang.name,))
             if wl:
                 out[code] = wl
+        return out
+
+    @cached_property
+    def native(self) -> dict[str, dict[str, str]]:
+        """Spelling in the language's own writing system, per ASJP concept, where
+        NorthEuraLex has the same word as the ASJP list."""
+        import csv
+        params = source_dir("asjp", self.raw_dir) / "cldf" / "parameters.csv"
+        concepticon = {r["ID"]: r["Concepticon_ID"] for r in csv.DictReader(open(params, encoding="utf-8"))
+                       if r["Name"].startswith("*")}
+        words = northeuralex.load(source_dir("northeuralex", self.raw_dir), concepticon)
+        out = {}
+        for code, wl in self.wordlists.items():
+            rec = self.languages[code].record
+            cand = words.get(rec.iso or "") or words.get(rec.glottocode or "")
+            if cand:
+                matched = northeuralex.match(wl, cand)
+                if matched:
+                    out[code] = matched
         return out
 
     @cached_property
@@ -176,6 +195,7 @@ def cmd_build(args) -> None:
     dump("ancestors.json", {gc: d.glottolog.names[gc] for gc in sorted(used)})
     dump("wordlists.json", {code: wl.words for code, wl in wls.items()})
     dump("concepts.json", asjp.load_concepts(source_dir("asjp", d.raw_dir)))
+    dump("native.json", d.native)
     print("geographic neighbours…")
     dump("neighbours_geographic.json", neighbours.geographic(langs, k=args.k))
     print("chance baseline for LDND…")
