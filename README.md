@@ -52,9 +52,11 @@ than inventory overlap).
 - Where ASJP has no list for a variety, it falls back to its language's list,
   so two codes can share one (flagged as "same ASJP list"; they're left out of
   each other's neighbour lists).
-- **Origin points.** LinguaMeta has a point for each country a language is
-  spoken in. Each language is represented by one: where most people would say
-  it comes from. Most languages have only one point; for the ~50 with several,
+- **Traditional homes.** LinguaMeta has a point for each country a language is
+  spoken in. Each language is represented by one: where it is traditionally
+  at home (not where it originated, which for English would be northern
+  Germany). The website rounds these distances and draws a soft area rather
+  than a dot, since a language has no precise centre. Most languages have only one point; for the ~50 with several,
   we take the one in the country Glottolog's coordinate falls in (English in
   Great Britain, Spanish in Spain, Portuguese in Portugal), else the nearest
   to it, else the country with most speakers. Diaspora and colonial languages
@@ -107,6 +109,11 @@ then only what the pair shares. That covers the scripts both are usually
 written in (or, for closely related languages, the scripts that divide them,
 as with Hindi and Urdu), and the countries both are spoken in and official
 in. These are facts about the pair, not distances, so they aren't scored.
+
+The map tints the countries where each language is spoken today and hatches
+Natural Earth's disputed areas (Kashmir, Aksai Chin, Crimea…) rather than
+assigning them to a claimant. `scripts/make_map_assets.py` builds the
+country-code table and disputed-areas layer in `site/assets/map-extra.json`.
 
 `.github/workflows/pages.yml` builds the data and deploys the site to GitHub
 Pages on every push to `main`.

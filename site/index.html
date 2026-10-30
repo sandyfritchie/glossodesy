@@ -21,6 +21,8 @@
   --flag: #D4146E;
   --moss: #66785A;
   --moss-wash: rgba(102, 120, 90, 0.18);
+  --a-wash: rgba(212, 20, 110, 0.13);
+  --b-wash: rgba(59, 102, 132, 0.2);
   --land: #D5DED6;
   --land-edge: #AFBDB3;
   --sea: #F8FAFA;
@@ -35,6 +37,7 @@
     --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
     --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
     --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
+    --a-wash: rgba(255, 79, 154, 0.16); --b-wash: rgba(141, 183, 211, 0.18);
     --land: #22313D; --land-edge: #415A6E; --sea: #172430; --panel: #182531; color-scheme: dark;
   }
 }
@@ -42,6 +45,7 @@
   --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
   --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
   --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
+    --a-wash: rgba(255, 79, 154, 0.16); --b-wash: rgba(141, 183, 211, 0.18);
   --land: #22313D; --land-edge: #415A6E; --sea: #172430; --panel: #182531; color-scheme: dark;
 }
 
@@ -186,8 +190,20 @@ section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64
 .map svg { width: 100%; height: 100%; display: block; }
 .map .land { fill: var(--land); stroke: var(--land-edge); stroke-width: 0.6; vector-effect: non-scaling-stroke; }
 .map .border { fill: none; stroke: var(--land-edge); stroke-width: 0.8; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.map .arc { fill: none; stroke: var(--flag); stroke-width: 2; stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; }
-.map .pt { fill: var(--flag); stroke: var(--paper); stroke-width: 2; }
+.map .arc { fill: none; stroke: var(--ink-soft); stroke-width: 1.2; stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; opacity: 0.8; }
+.map .tint-a { fill: var(--a-wash); }
+.map .tint-b { fill: var(--b-wash); }
+.map .home-a-stop { stop-color: var(--flag); }
+.map .home-b-stop { stop-color: var(--survey); }
+.map .disputed { stroke: var(--ink-faint); stroke-width: 0.8; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.map .hatch-bg { fill: var(--land); }
+.map .hatch-line { stroke: var(--land-edge); stroke-width: 2.5; }
+.map-key { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 10px; font-size: 14px; color: var(--ink-soft); }
+.map-key span { display: inline-flex; align-items: center; gap: 7px; }
+.map-key .sw { width: 14px; height: 14px; border-radius: 2px; border: 1px solid var(--land-edge); display: inline-block; }
+.map-key .sw-a { background: var(--a-wash); border-color: var(--flag); }
+.map-key .sw-b { background: var(--b-wash); border-color: var(--survey); }
+.map-key .sw-hatch { background: repeating-linear-gradient(45deg, var(--land) 0 3px, var(--land-edge) 3px 5px); }
 .map .lbl { font: italic 500 16px var(--serif); fill: var(--ink); paint-order: stroke; stroke: var(--sea); stroke-width: 4px; }
 
 /* ---- Language page ----------------------------------------------------- */
@@ -259,7 +275,8 @@ footer.about dd { margin: 2px 0 0; }
       <p>“How similar are these languages?” has more than one answer, so each is measured separately and none is folded into a single score.</p>
       <p><b>Family tree</b> is the position of both languages in Glottolog’s classification: 0 means the same language, 1 means no known common ancestor. It measures structure, not time; some families are subdivided far more finely than others.</p>
       <p><b>Core words</b> compares 40 basic words (I, two, water, eye…) using LDND, a sound-based edit distance corrected for chance resemblance. Around 1.0 is what unrelated languages score, so the shaded band on the scale shows the range of 98% of unrelated pairs.</p>
-      <p><b>Distance</b> is between the places each language comes from, not everywhere it is spoken today, so English is placed in England and Spanish in Spain.</p>
+      <p><b>Distance</b> is between each language’s traditional home, not everywhere it is spoken today, so English is placed in England and Spanish in Spain. A language has no precise centre, so the distance is rounded and the map shows a soft area rather than a point.</p>
+      <p><b>Borders</b> follow Natural Earth, which draws the boundaries of de facto control. Areas whose status is disputed are hatched and not counted as part of any country.</p>
     </div>
     <div>
       <h3>Sources</h3>
@@ -267,7 +284,7 @@ footer.about dd { margin: 2px 0 0; }
         <dt>LinguaMeta</dt><dd>Language names, codes, speaker numbers and locations. CC BY-SA 4.0.</dd>
         <dt>Glottolog 5.3</dt><dd>Language classification. CC BY 4.0.</dd>
         <dt>ASJP 21.1</dt><dd>40-item word lists. CC BY 4.0.</dd>
-        <dt>Natural Earth</dt><dd>Coastlines and borders for the map. Public domain.</dd>
+        <dt>Natural Earth</dt><dd>Coastlines, borders and disputed areas for the map. Public domain.</dd>
         <dt>NorthEuraLex</dt><dd>Spellings of those words in each language’s own writing system, for 107 languages. CC BY 4.0.</dd>
       </dl>
       <p style="margin-top:16px">The data on this site is CC BY-SA 4.0. The code is on <a href="https://github.com/sandyfritchie/glossodesy">GitHub</a>.</p>
@@ -535,7 +552,9 @@ function contextText(A, B, g) {
 const endo = (L) => L.endonym && L.endonym.toLowerCase() !== L.name.toLowerCase()
   ? `<span class="endo" lang="${esc(L.code || "")}">(${esc(L.endonym)})</span>` : "";
 const pct = (x) => x < 0.001 ? "fewer than 1 in 1,000" : x < 0.01 ? `${(x * 100).toFixed(1)}%` : `${Math.round(x * 100)}%`;
-const kmText = (d) => d < 10 ? `${d.toFixed(1)} km` : `${fmt.format(Math.round(d / (d > 1000 ? 10 : 1)) * (d > 1000 ? 10 : 1))} km`;
+// Distances between traditional homes are rough, so they're shown to two significant figures.
+const roughKm = (d) => d < 50 ? "less than 50 km" : `${fmt.format(Number(d.toPrecision(2)))} km`;
+const shortKm = (d) => d < 50 ? "<50 km" : `${fmt.format(Number(d.toPrecision(2)))} km`;
 const geoX = (d) => Math.min(1, Math.log10(Math.max(d, 1)) / Math.log10(20000));
 
 function staff({ title, sub, verdict, x, band, ends, value, empty }) {
@@ -635,11 +654,11 @@ async function renderCompare(a, b) {
   else if (d < 1) dv = "They come from the same place.";
   else {
     const ra = regionName(A.origin[2]), rb = regionName(B.origin[2]);
-    dv = `Their origins are <b class="figure">${kmText(d)}</b> apart${ra === rb ? `, both in ${esc(placeName(A.origin[2]))}` : `, in ${esc(placeName(A.origin[2]))} and ${esc(placeName(B.origin[2]))}`}.`;
+    dv = `Their traditional homes are ${d < 50 ? "" : "roughly "}<b class="figure">${roughKm(d)}</b> apart${ra === rb ? `, both in ${esc(placeName(A.origin[2]))}` : `, in ${esc(placeName(A.origin[2]))} and ${esc(placeName(B.origin[2]))}`}.`;
   }
   staffs.append(staff({
-    title: "Distance", sub: "between places of origin, on a log scale", verdict: dv, empty: d == null,
-    x: d != null ? geoX(d) : null, value: d != null ? kmText(d) : null, ends: ["1 km", "20,000 km"],
+    title: "Distance", sub: "between traditional homes, on a log scale", verdict: dv, empty: d == null,
+    x: d != null ? geoX(d) : null, value: d != null ? (d < 50 ? "<50 km" : `~${shortKm(d)}`) : null, ends: ["1 km", "20,000 km"],
   }));
 
   // Details
@@ -693,53 +712,115 @@ function wordsSection(A, B, wa, wb, lex, concepts, native) {
   return s;
 }
 
-/** Keep dots and labels the same size on screen however wide the map is drawn. */
+/** Keep labels and the soft areas a sensible size on screen however wide the map is drawn. */
 function sizeMapMarks(section) {
   const svg = section.querySelector(".map svg");
   if (!svg) return;
   const k = 960 / (svg.getBoundingClientRect().width || 960);
-  svg.querySelectorAll(".pt").forEach((c) => c.setAttribute("r", 7 * k));
-  svg.querySelectorAll(".pt").forEach((c) => c.style.strokeWidth = 2 * k);
+  svg.querySelectorAll(".home").forEach((c) => c.setAttribute("r", Math.max(+c.dataset.r, 26 * k)));
   svg.querySelectorAll(".lbl").forEach((t) => {
     t.style.fontSize = `${16 * k}px`; t.style.strokeWidth = `${4 * k}px`;
     const right = t.getAttribute("text-anchor") === "start";
-    const x = +t.dataset.x, y = +t.dataset.y;
-    t.setAttribute("x", x + (right ? 12 : -12) * k); t.setAttribute("y", y - 10 * k);
+    const x = +t.dataset.x, y = +t.dataset.y, r = Math.max(+t.dataset.r, 26 * k) * 0.55;
+    t.setAttribute("x", x + (right ? r : -r)); t.setAttribute("y", y - r);
   });
 }
-let LAND;
+
+let MAP;
+async function loadMap() {
+  if (MAP) return MAP;
+  const get = (url) => fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  // Coastlines and borders (Natural Earth 1:50m via world-atlas), plus a table
+  // matching LinguaMeta's country codes to the shapes and Natural Earth's
+  // disputed areas. All ship with the site.
+  const [t, extra] = await Promise.all([get("assets/countries-50m.json"), get("assets/map-extra.json")]);
+  MAP = {
+    land: topojson.feature(t, t.objects.land),
+    borders: topojson.mesh(t, t.objects.countries, (a, b) => a !== b),
+    countries: topojson.feature(t, t.objects.countries).features,
+    iso: extra.iso,
+    disputed: extra.disputed.features,
+  };
+  return MAP;
+}
+
 /** The map section, or null if it can't be drawn (then the page simply has no map). */
 async function mapSection(A, B, d) {
   if (!window.d3 || !window.topojson) return null;
-  try {
-    // Coastlines and borders ship with the site (Natural Earth 1:50m, via world-atlas).
-    LAND = LAND || await fetch("assets/countries-50m.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then((t) => ({ land: topojson.feature(t, t.objects.land), borders: topojson.mesh(t, t.objects.countries, (a, b) => a !== b) }));
-  } catch { return null; }
-  const s = el(`<section class="detail"><h3>On the map</h3><p class="sub">Each language is shown where it comes from.</p><div class="map"></div></section>`);
+  let M;
+  try { M = await loadMap(); } catch { return null; }
+  const s = el(`<section class="detail"><h3>On the map</h3>
+    <p class="sub">Each soft patch marks roughly where a language is traditionally at home, not a precise centre. Tinted countries are where each is spoken today.</p>
+    <div class="map"></div><div class="map-key"></div></section>`);
   const box = s.querySelector(".map");
   const W = 960, H = 540;
   const pa = [A.origin[1], A.origin[0]], pb = [B.origin[1], B.origin[0]];
   const mid = d3.geoInterpolate(pa, pb)(0.5);
-  // Show both points with room around them, but never less than ~2,000 km
+  // Show both homes with room around them, but never less than ~2,000 km
   // across, so a close pair still has coastlines and borders to orient by.
   const radius = Math.min(85, Math.max(9, 6 + 0.6 * (d / 111)));
   const frame = d3.geoCircle().center(mid).radius(radius)();
   const proj = d3.geoEqualEarth().rotate([-mid[0], 0]).fitExtent([[40, 30], [W - 40, H - 30]], frame);
   const path = d3.geoPath(proj);
   const svg = d3.create("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("role", "img")
-    .attr("aria-label", `Map showing ${A.name} and ${B.name}, ${kmText(d)} apart`);
-  svg.append("path").datum(LAND.land).attr("class", "land").attr("d", path);
-  svg.append("path").datum(LAND.borders).attr("class", "border").attr("d", path);
-  svg.append("path").datum({ type: "LineString", coordinates: [pa, pb] }).attr("class", "arc").attr("d", path);
-  for (const [L, p] of [[A, pa], [B, pb]]) {
+    .attr("aria-label", `Map of where ${A.name} and ${B.name} are traditionally at home, ${roughKm(d)} apart, and the countries where each is spoken today`);
+  const uid = `m${Math.random().toString(36).slice(2, 8)}`;
+  const defs = svg.append("defs");
+  defs.append("clipPath").attr("id", `${uid}-land`).append("path").datum(M.land).attr("d", path);
+  const hatch = defs.append("pattern").attr("id", `${uid}-hatch`).attr("patternUnits", "userSpaceOnUse")
+    .attr("width", 7).attr("height", 7).attr("patternTransform", "rotate(45)");
+  hatch.append("rect").attr("width", 7).attr("height", 7).attr("class", "hatch-bg");
+  hatch.append("line").attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 7).attr("class", "hatch-line");
+  for (const [key, cls] of [["a", "home-a"], ["b", "home-b"]]) {
+    const g = defs.append("radialGradient").attr("id", `${uid}-${key}`);
+    g.append("stop").attr("offset", "0%").attr("class", `${cls}-stop`).attr("stop-opacity", 0.75);
+    g.append("stop").attr("offset", "55%").attr("class", `${cls}-stop`).attr("stop-opacity", 0.35);
+    g.append("stop").attr("offset", "100%").attr("class", `${cls}-stop`).attr("stop-opacity", 0);
+  }
+
+  svg.append("path").datum(M.land).attr("class", "land").attr("d", path);
+  // Where each language is spoken today (LinguaMeta's countries).
+  const ids = (L) => new Set((L.countries || []).map((c) => M.iso[c]).filter(Boolean));
+  for (const [L, cls] of [[A, "tint-a"], [B, "tint-b"]]) {
+    const want = ids(L);
+    svg.append("g").selectAll("path").data(M.countries.filter((f) => want.has(f.id)))
+      .join("path").attr("class", cls).attr("d", path);
+  }
+  svg.append("path").datum(M.borders).attr("class", "border").attr("d", path);
+  // Disputed areas: hatched and assigned to no one.
+  const inView = (f) => { const [[x0, y0], [x1, y1]] = path.bounds(f); return isFinite(x0) && x1 > 0 && x0 < W && y1 > 0 && y0 < H; };
+  const disputed = M.disputed.filter(inView);
+  svg.append("g").selectAll("path").data(disputed).join("path")
+    .attr("class", "disputed").attr("fill", `url(#${uid}-hatch)`).attr("d", path)
+    .append("title").text((f) => `${f.properties.name}: ${f.properties.note}`);
+
+  // Traditional homes: soft patches, kept on land.
+  const homes = svg.append("g").attr("clip-path", `url(#${uid}-land)`);
+  const projectedRadius = (p) => {
+    const [x, y] = proj(p), [x2, y2] = proj([p[0], p[1] + 2.7]); // ~300 km north
+    return Math.hypot(x2 - x, y2 - y);
+  };
+  const marks = [[A, pa, "a"], [B, pb, "b"]];
+  for (const [, p, key] of marks) {
     const [x, y] = proj(p);
-    svg.append("circle").attr("class", "pt").attr("cx", x).attr("cy", y).attr("r", 7);
-    const right = x < W * 0.75;
-    svg.append("text").attr("class", "lbl").attr("data-x", x).attr("data-y", y).attr("x", x + (right ? 12 : -12)).attr("y", y - 10)
-      .attr("text-anchor", right ? "start" : "end").text(L.name);
+    homes.append("circle").attr("class", "home").attr("cx", x).attr("cy", y)
+      .attr("data-r", projectedRadius(p)).attr("r", projectedRadius(p)).attr("fill", `url(#${uid}-${key})`);
+  }
+  svg.append("path").datum({ type: "LineString", coordinates: [pa, pb] }).attr("class", "arc").attr("d", path);
+  // Labels sit on the outer side of each patch, so close pairs don't collide.
+  const xa = proj(pa)[0], xb = proj(pb)[0];
+  for (const [L, p, key] of marks) {
+    const [x, y] = proj(p);
+    const right = key === "a" ? xa >= xb : xb > xa;
+    svg.append("text").attr("class", "lbl").attr("data-x", x).attr("data-y", y).attr("data-r", projectedRadius(p))
+      .attr("text-anchor", right ? "start" : "end").attr("x", x).attr("y", y).text(L.name);
   }
   box.append(svg.node());
+
+  const key = s.querySelector(".map-key");
+  key.innerHTML = `<span><i class="sw sw-a"></i>Where ${esc(A.name)} is spoken today</span>
+    <span><i class="sw sw-b"></i>Where ${esc(B.name)} is spoken today</span>
+    ${disputed.length ? `<span><i class="sw sw-hatch"></i>Disputed area, not assigned to any country</span>` : ""}`;
   return s;
 }
 
@@ -761,7 +842,7 @@ async function renderLanguage(code) {
   const facts = [
     ["Speakers", L.speakers ? fmt.format(L.speakers) : "Not known"],
     ["Status", L.endangerment || "Not known"],
-    ["Comes from", L.origin ? regionName(L.origin[2]) : "Not known"],
+    ["Traditional home", L.origin ? regionName(L.origin[2]) : "Not known"],
     ["Codes", [code, L.iso && L.iso !== code ? L.iso : null].filter(Boolean).join(", ")],
   ];
   if (L.glottocode) facts.push(["Glottolog", `<a href="https://glottolog.org/resource/languoid/id/${esc(L.glottocode)}">${esc(L.glottocode)}</a>`]);
@@ -807,11 +888,11 @@ async function renderLanguage(code) {
   }
 
   // Geographic neighbours (precomputed)
-  const geoCol = col("Distance", "Nearest places of origin.");
+  const geoCol = col("Distance", "Nearest traditional homes, roughly.");
   const nbGeo = await load("neighbours_geographic.json");
   const gl = nbGeo[code];
   geoCol.querySelector(".nb").innerHTML = gl && gl.length
-    ? gl.slice(0, 12).map(([c, v]) => item(c, kmText(v))).join("")
+    ? gl.slice(0, 12).map(([c, v]) => item(c, shortKm(v))).join("")
     : `<li>No location.</li>`;
 
   main.append(el(`<p class="compare-link"><a href="#${code}-${code === "en" ? "de" : "en"}">Compare ${esc(L.name)} with another language</a></p>`));
