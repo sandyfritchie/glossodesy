@@ -71,7 +71,11 @@ than inventory overlap).
   area *and* in another country are dropped (English around Johannesburg,
   Korean in central Japan, German in Transylvania, Mandarin in Taiwan), while
   same-country islands stay (the Canaries, the Azores). Nearer pockets remain
-  (Korean in Kyushu), so areas still reflect the atlas editors' choices. Simplified to ~2 km
+  (Korean in Kyushu), so areas still reflect the atlas editors' choices.
+  Dialect-level codes without their own area use their language's: Serbian,
+  Croatian, Bosnian and Montenegrin all get Serbian-Croatian-Bosnian, and
+  Bokmål and Nynorsk get Norwegian. The site says when a pair shares an area
+  rather than treating it as an overlap. Simplified to ~2 km
   for the web; two areas count as overlapping only where one reaches more than
   10 km inside the other, and as adjacent within 25 km.
 - **Missing points.** LinguaMeta has no point for ~1,000 languages. All of them

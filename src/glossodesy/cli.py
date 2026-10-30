@@ -69,13 +69,18 @@ class Data:
         language (or for the language a dialect-level glottocode belongs to)."""
         by_gc = glottography.load(source_dir("glottography", self.raw_dir))
         out = {}
+        self.area_source = {}  # code -> glottocode of the atlas area it uses
         for code, lang in self.languages.items():
             gc = lang.glottocode
             if lang.is_macrolanguage or not gc:
                 continue
-            area = by_gc.get(gc) or by_gc.get(self.glottolog.language_of.get(gc, ""))
-            if area is not None:
-                out[code] = area
+            for candidate in (gc, self.glottolog.language_of.get(gc, "")):
+                if candidate in by_gc:
+                    out[code] = by_gc[candidate]
+                    # Dialect-level codes (Serbian, Croatian…) can share their
+                    # language's area; the site needs to know when two do.
+                    self.area_source[code] = candidate
+                    break
         from .geo import country_of
         trimmed, n = glottography.drop_outliers(out, country_of)
         print(f"  dropped {n} small, far-flung area fragments in other countries")
@@ -211,11 +216,11 @@ def cmd_build(args) -> None:
             "points": [[p.lat, p.lon, p.locale, p.source] for p in l.points],
             "lineage": list(l.lineage) if l.lineage else None,
             "asjp": wls[code].doculect if code in wls else None,
-            "area": code in d.areas or None,
+            "area": d.area_source.get(code) if code in d.areas else None,
         }
         for code, l in langs.items()
     })
-    used = {gc for l in langs.values() if l.lineage for gc in l.lineage}
+    used = {gc for l in langs.values() if l.lineage for gc in l.lineage} | set(d.area_source.values())
     dump("ancestors.json", {gc: d.glottolog.names[gc] for gc in sorted(used)})
     dump("wordlists.json", {code: wl.words for code, wl in wls.items()})
     dump("concepts.json", asjp.load_concepts(source_dir("asjp", d.raw_dir)))

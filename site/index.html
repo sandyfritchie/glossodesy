@@ -23,6 +23,7 @@
   --moss-wash: rgba(102, 120, 90, 0.18);
   --a-wash: rgba(212, 20, 110, 0.13);
   --b-wash: rgba(59, 102, 132, 0.2);
+  --shared-wash: rgba(74, 90, 104, 0.3);
   --land: #D5DED6;
   --land-edge: #AFBDB3;
   --sea: #F8FAFA;
@@ -37,7 +38,7 @@
     --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
     --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
     --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
-    --a-wash: rgba(255, 79, 154, 0.16); --b-wash: rgba(141, 183, 211, 0.18);
+    --a-wash: rgba(255, 79, 154, 0.16); --b-wash: rgba(141, 183, 211, 0.18); --shared-wash: rgba(175, 189, 198, 0.3);
     --land: #22313D; --land-edge: #415A6E; --sea: #172430; --panel: #182531; color-scheme: dark;
   }
 }
@@ -45,7 +46,7 @@
   --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
   --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
   --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
-    --a-wash: rgba(255, 79, 154, 0.16); --b-wash: rgba(141, 183, 211, 0.18);
+    --a-wash: rgba(255, 79, 154, 0.16); --b-wash: rgba(141, 183, 211, 0.18); --shared-wash: rgba(175, 189, 198, 0.3);
   --land: #22313D; --land-edge: #415A6E; --sea: #172430; --panel: #182531; color-scheme: dark;
 }
 
@@ -210,6 +211,8 @@ section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64
 .map .area { stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .map .area-a { fill: var(--flag); fill-opacity: 0.32; stroke: var(--flag); }
 .map .area-b { fill: var(--survey); fill-opacity: 0.32; stroke: var(--survey); }
+.map .area-shared { fill: var(--ink-soft); fill-opacity: 0.3; stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 6 4; }
+.map-key .sw-shared { background: linear-gradient(var(--shared-wash), var(--shared-wash)), var(--land); border: 1.5px dashed var(--ink); }
 .map-key .map-source { color: var(--ink-faint); flex-basis: 100%; }
 .map .tint-b { fill: var(--b-wash); }
 .map .home-a-stop { stop-color: var(--flag); }
@@ -682,6 +685,10 @@ async function renderCompare(a, b) {
   let dv, value = null;
   if (!rel) dv = `There’s no location for ${esc((!ra ? A : B).name)}.`;
   else if (a === b) dv = "These are the same language.";
+  else if (ga && gb && A.area === B.area) {
+    // Dialect-level languages can share their language's atlas area.
+    dv = `The atlas maps them as a single area, <b>${esc(ancestorName(A.area))}</b>.`; value = "same area";
+  }
   else if (rel.kind === "overlap") { dv = `${where} overlap.`; value = "overlap"; }
   else if (rel.kind === "adjacent") { dv = `${where} are next to each other.`; value = "adjacent"; }
   else {
@@ -940,10 +947,15 @@ async function mapSection(A, B, d, ga, gb) {
   // Spanish) stays visible.
   const areaLayer = svg.append("g");
   const drawn = [];
+  const shared = ga && gb && A.area === B.area;
   const marks = [[A, pa, "a", ga], [B, pb, "b", gb]].map(([L, p, key, g]) => {
     if (g) {
       const f = areaFeature(g);
-      drawn.push([d3.geoArea(f), f, key]);
+      // A shared area is drawn once, in a neutral style.
+      if (!(shared && key === "b")) drawn.push([d3.geoArea(f), f, shared ? "shared" : key]);
+      // Label at the language's own place when it lies inside the area,
+      // otherwise at the area's centre.
+      if (shared || d3.geoContains(f, p)) return [L, proj(p), key, 0];
       const c = path.centroid(f);
       return [L, isFinite(c[0]) ? c : proj(p), key, 0];
     }
@@ -973,6 +985,7 @@ async function mapSection(A, B, d, ga, gb) {
   key.innerHTML = `<span><i class="sw sw-a"></i>Where ${esc(A.name)} is spoken today</span>
     <span><i class="sw sw-b"></i>Where ${esc(B.name)} is spoken today</span>
     ${disputed.length ? `<span><i class="sw sw-hatch"></i>Disputed area, not assigned to any country</span>` : ""}
+    ${shared ? `<span><i class="sw sw-shared"></i>Area the atlas gives to both</span>` : ""}
     ${ga || gb ? `<span class="map-source">Outlined areas: <i>Atlas of the World’s Languages</i> (Asher &amp; Moseley 2007), via Glottography.</span>` : ""}`;
   return s;
 }
