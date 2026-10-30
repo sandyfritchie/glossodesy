@@ -186,7 +186,22 @@ section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64
 .words tr.close .simbar i { background: var(--flag); }
 .words-note { font-size: 14.5px; color: var(--ink-faint); margin-top: 12px; max-width: 70ch; }
 
-.map { width: 100%; aspect-ratio: 16 / 9; max-height: 460px; background: var(--sea); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.map { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 460px; background: var(--sea); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.map svg { cursor: grab; }
+.map svg:active { cursor: grabbing; }
+.map-zoom { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 4px; }
+.map-zoom button {
+  width: 32px; height: 32px; border-radius: 4px; border: 1px solid var(--rule); background: var(--panel);
+  color: var(--ink); font: 400 18px/1 var(--sans); cursor: pointer; display: grid; place-items: center; padding: 0;
+}
+.map-zoom button:hover { border-color: var(--survey); }
+.map-zoom button.reset { font-size: 12px; }
+.map-hint {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); pointer-events: none;
+  background: var(--panel); color: var(--ink-soft); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 5px 10px; font-size: 14px; opacity: 0; transition: opacity 200ms;
+}
+.map-hint.show { opacity: 1; }
 .map svg { width: 100%; height: 100%; display: block; }
 .map .land { fill: var(--land); stroke: var(--land-edge); stroke-width: 0.6; vector-effect: non-scaling-stroke; }
 .map .border { fill: none; stroke: var(--land-edge); stroke-width: 0.8; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
@@ -732,10 +747,11 @@ function wordsSection(A, B, wa, wb, lex, concepts, native) {
 }
 
 /** Keep labels and the soft areas a sensible size on screen however wide the map is drawn. */
-function sizeMapMarks(section) {
+function sizeMapMarks(section, zoom = 1) {
   const svg = section.querySelector(".map svg");
   if (!svg) return;
-  const k = 960 / (svg.getBoundingClientRect().width || 960);
+  // Map units per screen pixel: the drawing is scaled to fit its box, then zoomed.
+  const k = 960 / (svg.getBoundingClientRect().width || 960) / zoom;
   svg.querySelectorAll(".home").forEach((c) => c.setAttribute("r", Math.max(+c.dataset.r, 26 * k)));
   svg.querySelectorAll(".lbl").forEach((t) => {
     t.style.fontSize = `${16 * k}px`; t.style.strokeWidth = `${4 * k}px`;
@@ -790,6 +806,52 @@ function geoRelation(ga, gb) {
   const dist = best * 6371;
   const anyArea = ga.type !== "Point" || gb.type !== "Point";
   return { kind: anyArea && dist < 25 ? "adjacent" : "apart", km: dist };
+}
+
+/**
+ * Pan and zoom the map. A plain scroll wheel and one-finger drag still scroll
+ * the page; zoom with the buttons, double-click, Ctrl/⌘ + scroll (or trackpad
+ * pinch), or two fingers on a touch screen.
+ */
+function enableZoom(section, svg, view, W, H) {
+  const box = section.querySelector(".map");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const zoom = d3.zoom().scaleExtent([1, 20]).translateExtent([[0, 0], [W, H]])
+    // Trackpad pinches arrive as small Ctrl+wheel steps and need speeding up;
+    // a Ctrl+mouse-wheel notch is large and shouldn't jump several levels.
+    .wheelDelta((e) => -e.deltaY * (e.deltaMode === 1 ? 0.05 : e.deltaMode ? 1 : 0.002) * (e.ctrlKey && Math.abs(e.deltaY) < 50 ? 10 : 1))
+    .filter((e) => {
+      if (e.type === "wheel") return e.ctrlKey || e.metaKey;
+      if (e.type.startsWith("touch")) return e.touches && e.touches.length >= 2;
+      return !e.button;
+    })
+    .on("zoom", (e) => {
+      const k = e.transform.k;
+      view.attr("transform", e.transform);
+      sizeMapMarks(section, k);
+      // Keep the disputed-area hatching the same size on screen.
+      const step = 7 / k;
+      svg.selectAll("pattern").attr("width", step).attr("height", step);
+      svg.selectAll("pattern rect").attr("width", step).attr("height", step);
+      svg.selectAll("pattern line").attr("y2", step).style("stroke-width", 2.5 / k);
+    });
+  svg.call(zoom);
+  const controls = el(`<div class="map-zoom">
+    <button type="button" class="in" aria-label="Zoom in">+</button>
+    <button type="button" class="out" aria-label="Zoom out">−</button>
+    <button type="button" class="reset" aria-label="Show the whole map">Fit</button></div>`);
+  const hint = el(`<div class="map-hint" aria-hidden="true">Hold Ctrl or ⌘ and scroll to zoom</div>`);
+  box.append(controls, hint);
+  const t = () => (reduce ? svg : svg.transition().duration(250));
+  controls.querySelector(".in").addEventListener("click", () => t().call(zoom.scaleBy, 2));
+  controls.querySelector(".out").addEventListener("click", () => t().call(zoom.scaleBy, 0.5));
+  controls.querySelector(".reset").addEventListener("click", () => t().call(zoom.transform, d3.zoomIdentity));
+  let timer;
+  box.addEventListener("wheel", (e) => {
+    if (e.ctrlKey || e.metaKey) return;
+    hint.classList.add("show"); clearTimeout(timer);
+    timer = setTimeout(() => hint.classList.remove("show"), 1400);
+  }, { passive: true });
 }
 
 let MAP;
@@ -900,7 +962,11 @@ async function mapSection(A, B, d, ga, gb) {
     svg.append("text").attr("class", "lbl").attr("data-x", x).attr("data-y", y).attr("data-r", r)
       .attr("text-anchor", right ? "start" : "end").attr("x", x).attr("y", y).text(L.name);
   }
+  // Everything but the defs goes in one group that pans and zooms together.
+  const view = svg.append("g").attr("class", "view");
+  svg.selectChildren(":not(defs):not(.view)").each(function () { view.node().appendChild(this); });
   box.append(svg.node());
+  enableZoom(s, svg, view, W, H);
 
   const key = s.querySelector(".map-key");
   key.innerHTML = `<span><i class="sw sw-a"></i>Where ${esc(A.name)} is spoken today</span>
