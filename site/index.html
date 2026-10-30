@@ -266,6 +266,7 @@ footer.about dd { margin: 2px 0 0; }
         <dt>LinguaMeta</dt><dd>Language names, codes, speaker numbers and locations. CC BY-SA 4.0.</dd>
         <dt>Glottolog 5.3</dt><dd>Language classification. CC BY 4.0.</dd>
         <dt>ASJP 21.1</dt><dd>40-item word lists. CC BY 4.0.</dd>
+        <dt>Natural Earth</dt><dd>Coastlines for the map. Public domain.</dd>
         <dt>NorthEuraLex</dt><dd>Spellings of those words in each language’s own writing system, for 107 languages. CC BY 4.0.</dd>
       </dl>
       <p style="margin-top:16px">The data on this site is CC BY-SA 4.0. The code is on <a href="https://github.com/sandyfritchie/glossodesy">GitHub</a>.</p>
@@ -647,7 +648,7 @@ async function renderCompare(a, b) {
       const [concepts, native] = await Promise.all([load("concepts.json"), load("native.json")]);
       main.append(wordsSection(A, B, wa, wb, lex, concepts, native));
     }
-    if (d != null) main.append(await mapSection(A, B, d));
+    if (d != null) { const map = await mapSection(A, B, d); if (map) main.append(map); }
   }
 }
 
@@ -692,13 +693,16 @@ function wordsSection(A, B, wa, wb, lex, concepts, native) {
 }
 
 let LAND;
+/** The map section, or null if it can't be drawn (then the page simply has no map). */
 async function mapSection(A, B, d) {
+  if (!window.d3 || !window.topojson) return null;
+  try {
+    // Coastlines ship with the site (Natural Earth 1:50m, via world-atlas).
+    LAND = LAND || await fetch("assets/land-50m.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((t) => topojson.feature(t, t.objects.land));
+  } catch { return null; }
   const s = el(`<section class="detail"><h3>On the map</h3><p class="sub">Each language is shown where it comes from.</p><div class="map"></div></section>`);
   const box = s.querySelector(".map");
-  if (!window.d3 || !window.topojson) { box.remove(); return s; }
-  try {
-    LAND = LAND || await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/land-50m.json").then((r) => r.json()).then((t) => topojson.feature(t, t.objects.land));
-  } catch { box.remove(); return s; }
   const W = 960, H = 540;
   const pa = [A.origin[1], A.origin[0]], pb = [B.origin[1], B.origin[0]];
   const mid = d3.geoInterpolate(pa, pb)(0.5);
