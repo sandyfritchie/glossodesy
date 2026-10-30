@@ -35,14 +35,14 @@
     --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
     --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
     --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
-    --land: #22313D; --land-edge: #34495A; --sea: #172430; --panel: #182531; color-scheme: dark;
+    --land: #22313D; --land-edge: #415A6E; --sea: #172430; --panel: #182531; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
   --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
   --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
-  --land: #22313D; --land-edge: #34495A; --sea: #172430; --panel: #182531; color-scheme: dark;
+  --land: #22313D; --land-edge: #415A6E; --sea: #172430; --panel: #182531; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -106,6 +106,8 @@ header.site nav a:first-child { margin-left: 0; }
 .question input:focus { outline: none; border-bottom-color: var(--flag); }
 .question input::placeholder { color: var(--ink-faint); }
 .lede { color: var(--ink-soft); max-width: 60ch; margin: 18px 0 0; font-size: 17px; }
+.context { font: 400 20px/1.5 var(--serif); color: var(--ink); max-width: 58ch; margin: 22px 0 0; text-wrap: pretty; }
+.context + .lede { margin-top: 10px; font-size: 15.5px; }
 
 .suggest {
   position: absolute; left: 0; top: 100%; z-index: 20; margin-top: 6px;
@@ -182,8 +184,9 @@ section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64
 
 .map { width: 100%; aspect-ratio: 16 / 9; max-height: 460px; background: var(--sea); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
 .map svg { width: 100%; height: 100%; display: block; }
-.map .land { fill: var(--land); stroke: var(--land-edge); stroke-width: 0.6; }
-.map .arc { fill: none; stroke: var(--flag); stroke-width: 2; stroke-dasharray: 6 5; }
+.map .land { fill: var(--land); stroke: var(--land-edge); stroke-width: 0.6; vector-effect: non-scaling-stroke; }
+.map .border { fill: none; stroke: var(--land-edge); stroke-width: 0.8; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.map .arc { fill: none; stroke: var(--flag); stroke-width: 2; stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; }
 .map .pt { fill: var(--flag); stroke: var(--paper); stroke-width: 2; }
 .map .lbl { font: italic 500 16px var(--serif); fill: var(--ink); paint-order: stroke; stroke: var(--sea); stroke-width: 4px; }
 
@@ -225,6 +228,7 @@ footer.about dd { margin: 2px 0 0; }
   body { font-size: 16px; }
   .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .site-search { order: 3; flex-basis: 100%; }
+  .context { font-size: 18px; }
   .question { margin-top: 36px; }
   .staff { grid-template-columns: 1fr; }
   .branches, .unrelated, .cols, footer.about { grid-template-columns: 1fr; }
@@ -263,6 +267,7 @@ footer.about dd { margin: 2px 0 0; }
         <dt>LinguaMeta</dt><dd>Language names, codes, speaker numbers and locations. CC BY-SA 4.0.</dd>
         <dt>Glottolog 5.3</dt><dd>Language classification. CC BY 4.0.</dd>
         <dt>ASJP 21.1</dt><dd>40-item word lists. CC BY 4.0.</dd>
+        <dt>Natural Earth</dt><dd>Coastlines and borders for the map. Public domain.</dd>
         <dt>NorthEuraLex</dt><dd>Spellings of those words in each language’s own writing system, for 107 languages. CC BY 4.0.</dd>
       </dl>
       <p style="margin-top:16px">The data on this site is CC BY-SA 4.0. The code is on <a href="https://github.com/sandyfritchie/glossodesy">GitHub</a>.</p>
@@ -277,10 +282,29 @@ footer.about dd { margin: 2px 0 0; }
 const DATA = "data/";
 const DEFAULT_PAIR = ["nl", "de"];
 const fmt = new Intl.NumberFormat("en");
+// Country names as they read in a sentence; the browser's defaults are tuned for menus.
+const COUNTRY_NAMES = {
+  BA: "Bosnia and Herzegovina", CD: "the Democratic Republic of the Congo", CG: "the Republic of the Congo",
+  HK: "Hong Kong", MO: "Macau", MM: "Myanmar", PS: "Palestine", CI: "Côte d’Ivoire", VA: "Vatican City",
+  KN: "Saint Kitts and Nevis", LC: "Saint Lucia", VC: "Saint Vincent and the Grenadines", TT: "Trinidad and Tobago",
+  AG: "Antigua and Barbuda", ST: "São Tomé and Príncipe", WF: "Wallis and Futuna", PM: "Saint Pierre and Miquelon",
+};
+const WITH_THE = new Set(["GB", "US", "NL", "PH", "AE", "BS", "GM", "KM", "CF", "DO", "MH", "SB", "SC", "MV", "CZ", "VG", "VI", "KY", "TC", "FK", "FO", "CK", "MP", "UM"]);
 const regionName = (() => {
-  try { const d = new Intl.DisplayNames(["en"], { type: "region" }); return (cc) => { try { return d.of(cc.toUpperCase()); } catch { return cc.toUpperCase(); } }; }
-  catch { return (cc) => cc.toUpperCase(); }
+  let d = null;
+  try { d = new Intl.DisplayNames(["en"], { type: "region" }); } catch {}
+  return (cc) => {
+    const up = cc.toUpperCase();
+    let name = COUNTRY_NAMES[up];
+    if (!name) { try { name = d ? d.of(up) : up; } catch { name = up; } }
+    return name.replace(/^the /, "");
+  };
 })();
+/** A country name ready to drop into a sentence: "the United Kingdom". */
+const placeName = (cc) => {
+  const up = cc.toUpperCase(), name = regionName(cc);
+  return WITH_THE.has(up) || (COUNTRY_NAMES[up] || "").startsWith("the ") ? `the ${name}` : name;
+};
 
 /* ---- Data loading -------------------------------------------------------- */
 const cache = {};
@@ -291,7 +315,7 @@ function load(name) {
   });
   return cache[name];
 }
-let LANGS, ANCESTORS, INDEX;
+let LANGS, ANCESTORS, INDEX, SCRIPTS = {};
 
 /* ---- Distances (mirrors the Python package) ----------------------------- */
 function levenshtein(a, b) {
@@ -452,6 +476,62 @@ function combobox(input, list, onPick, { macroPage = false } = {}) {
 const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ancestorName = (gc) => ANCESTORS[gc] || gc;
+const joinList = (xs) => xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+function speakersText(n) {
+  if (n >= 1e9) return `${+(n / 1e9).toFixed(1)} billion`;
+  if (n >= 1e6) { const m = n / 1e6; return `${m >= 10 ? Math.round(m) : +m.toFixed(1)} million`; }
+  return fmt.format(Number(n.toPrecision(2)));
+}
+const HAN = ["hans", "hant", "hani", "jpan", "kore"];
+function scriptList(codes) {
+  // Simplified and traditional Chinese characters read better as one phrase.
+  if (codes.includes("hans") && codes.includes("hant")) {
+    codes = codes.filter((c) => c !== "hans" && c !== "hant");
+    return joinList(["simplified and traditional Chinese characters", ...codes.map((c) => SCRIPTS[c] || c)]);
+  }
+  return joinList(codes.map((c) => SCRIPTS[c] || c));
+}
+function placeList(codes) {
+  const names = codes.map(placeName);
+  return names.length <= 3 ? joinList(names) : `${names.slice(0, 3).join(", ")} and ${names.length - 3} other countries`;
+}
+
+/** One or two sentences of context: speakers, then only what the pair shares. */
+function contextText(A, B, g) {
+  const out = [];
+  const clause = (L) => L.speakers ? ["n", L.speakers] : L.endangerment === "Extinct" ? ["x"] : null;
+  const ca = clause(A), cb = clause(B);
+  if (ca && cb && ca[0] === "n" && cb[0] === "n") {
+    out.push(`${esc(A.name)} has about ${speakersText(ca[1])} speakers and ${esc(B.name)} about ${speakersText(cb[1])}.`);
+  } else {
+    const say = (L, c) => c[0] === "n" ? `${esc(L.name)} has about ${speakersText(c[1])} speakers` : `${esc(L.name)} is extinct`;
+    const parts = [ca && say(A, ca), cb && say(B, cb)].filter(Boolean);
+    if (parts.length) out.push(parts.join("; ") + ".");
+  }
+
+  const sa = A.scripts || [], sb = B.scripts || [];
+  const shared = sa.filter((x) => sb.includes(x));
+  const related = g && g.ancestor && g.distance < 0.5;
+  if (shared.length) {
+    const extra = (L, own) => { const x = own.filter((c) => !shared.includes(c)); return x.length ? `${esc(L.name)} also uses ${scriptList(x)}` : null; };
+    const also = [extra(A, sa), extra(B, sb)].filter(Boolean);
+    out.push(`Both are written in ${scriptList(shared)}${also.length ? `; ${also.join(", and ")}` : ""}.`);
+  }
+  else if (sa.some((x) => HAN.includes(x)) && sb.some((x) => HAN.includes(x))) out.push("Both are written partly or wholly in Chinese characters.");
+  else if (related && sa.length && sb.length) out.push(`${esc(A.name)} is written in ${scriptList(sa)} and ${esc(B.name)} in ${scriptList(sb)}.`);
+
+  const oa = A.official || [], ob = B.official || [];
+  const both = (c) => oa.includes(c) && ob.includes(c);
+  const places = (A.countries || []).filter((c) => (B.countries || []).includes(c))
+    .sort((x, y) => both(y) - both(x) || regionName(x).localeCompare(regionName(y)));
+  if (places.length) {
+    const official = places.filter(both);
+    out.push(official.length === places.length
+      ? `Both are spoken and official in ${placeList(places)}.`
+      : `Both are spoken in ${placeList(places)}${official.length ? `, and both are official in ${placeList(official)}` : ""}.`);
+  }
+  return out.join(" ");
+}
 const endo = (L) => L.endonym && L.endonym.toLowerCase() !== L.name.toLowerCase()
   ? `<span class="endo" lang="${esc(L.code || "")}">(${esc(L.endonym)})</span>` : "";
 const pct = (x) => x < 0.001 ? "fewer than 1 in 1,000" : x < 0.01 ? `${(x * 100).toFixed(1)}%` : `${Math.round(x * 100)}%`;
@@ -504,13 +584,15 @@ async function renderCompare(a, b) {
   const ca = combobox(q.querySelector("#pick-a"), q.querySelector("#sug-a"), (code) => go(code, b));
   const cb = combobox(q.querySelector("#pick-b"), q.querySelector("#sug-b"), (code) => go(a, code));
   ca.set(A.name); cb.set(B.name);
+  const g = genealogical(A, B);
+  const ctx = a !== b ? contextText(A, B, g) : "";
+  if (ctx) main.append(el(`<p class="context">${ctx}</p>`));
   main.append(el(`<p class="lede">Pick any two of ${fmt.format(INDEX.filter((e) => e.l.scope === "language").length)} languages. Read about <a href="#${a}">${esc(A.name)}</a> or <a href="#${b}">${esc(B.name)}</a> on its own.</p>`));
 
   const staffs = el(`<div class="staffs"></div>`);
   main.append(staffs);
 
   // Family tree
-  const g = genealogical(A, B);
   let gv;
   if (a === b) gv = "These are the same language.";
   else if (!g) gv = `${esc((A.lineage ? B : A).name)} isn’t placed in a language family (it’s classified as a pidgin, mixed, constructed or unclassified language), so there’s no family tree to compare.`;
@@ -553,7 +635,7 @@ async function renderCompare(a, b) {
   else if (d < 1) dv = "They come from the same place.";
   else {
     const ra = regionName(A.origin[2]), rb = regionName(B.origin[2]);
-    dv = `Their origins are <b class="figure">${kmText(d)}</b> apart${ra === rb ? `, both in ${esc(ra)}` : `, in ${esc(ra)} and ${esc(rb)}`}.`;
+    dv = `Their origins are <b class="figure">${kmText(d)}</b> apart${ra === rb ? `, both in ${esc(placeName(A.origin[2]))}` : `, in ${esc(placeName(A.origin[2]))} and ${esc(placeName(B.origin[2]))}`}.`;
   }
   staffs.append(staff({
     title: "Distance", sub: "between places of origin, on a log scale", verdict: dv, empty: d == null,
@@ -567,7 +649,7 @@ async function renderCompare(a, b) {
       const [concepts, native] = await Promise.all([load("concepts.json"), load("native.json")]);
       main.append(wordsSection(A, B, wa, wb, lex, concepts, native));
     }
-    if (d != null) main.append(await mapSection(A, B, d));
+    if (d != null) { const map = await mapSection(A, B, d); if (map) { main.append(map); sizeMapMarks(map); } }
   }
 }
 
@@ -611,30 +693,50 @@ function wordsSection(A, B, wa, wb, lex, concepts, native) {
   return s;
 }
 
+/** Keep dots and labels the same size on screen however wide the map is drawn. */
+function sizeMapMarks(section) {
+  const svg = section.querySelector(".map svg");
+  if (!svg) return;
+  const k = 960 / (svg.getBoundingClientRect().width || 960);
+  svg.querySelectorAll(".pt").forEach((c) => c.setAttribute("r", 7 * k));
+  svg.querySelectorAll(".pt").forEach((c) => c.style.strokeWidth = 2 * k);
+  svg.querySelectorAll(".lbl").forEach((t) => {
+    t.style.fontSize = `${16 * k}px`; t.style.strokeWidth = `${4 * k}px`;
+    const right = t.getAttribute("text-anchor") === "start";
+    const x = +t.dataset.x, y = +t.dataset.y;
+    t.setAttribute("x", x + (right ? 12 : -12) * k); t.setAttribute("y", y - 10 * k);
+  });
+}
 let LAND;
+/** The map section, or null if it can't be drawn (then the page simply has no map). */
 async function mapSection(A, B, d) {
+  if (!window.d3 || !window.topojson) return null;
+  try {
+    // Coastlines and borders ship with the site (Natural Earth 1:50m, via world-atlas).
+    LAND = LAND || await fetch("assets/countries-50m.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((t) => ({ land: topojson.feature(t, t.objects.land), borders: topojson.mesh(t, t.objects.countries, (a, b) => a !== b) }));
+  } catch { return null; }
   const s = el(`<section class="detail"><h3>On the map</h3><p class="sub">Each language is shown where it comes from.</p><div class="map"></div></section>`);
   const box = s.querySelector(".map");
-  if (!window.d3 || !window.topojson) { box.remove(); return s; }
-  try {
-    LAND = LAND || await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/land-50m.json").then((r) => r.json()).then((t) => topojson.feature(t, t.objects.land));
-  } catch { box.remove(); return s; }
   const W = 960, H = 540;
   const pa = [A.origin[1], A.origin[0]], pb = [B.origin[1], B.origin[0]];
   const mid = d3.geoInterpolate(pa, pb)(0.5);
-  const radius = Math.min(80, Math.max(4, (d / 111) * 0.85));
+  // Show both points with room around them, but never less than ~2,000 km
+  // across, so a close pair still has coastlines and borders to orient by.
+  const radius = Math.min(85, Math.max(9, 6 + 0.6 * (d / 111)));
   const frame = d3.geoCircle().center(mid).radius(radius)();
   const proj = d3.geoEqualEarth().rotate([-mid[0], 0]).fitExtent([[40, 30], [W - 40, H - 30]], frame);
   const path = d3.geoPath(proj);
   const svg = d3.create("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("role", "img")
     .attr("aria-label", `Map showing ${A.name} and ${B.name}, ${kmText(d)} apart`);
-  svg.append("path").datum(LAND).attr("class", "land").attr("d", path);
+  svg.append("path").datum(LAND.land).attr("class", "land").attr("d", path);
+  svg.append("path").datum(LAND.borders).attr("class", "border").attr("d", path);
   svg.append("path").datum({ type: "LineString", coordinates: [pa, pb] }).attr("class", "arc").attr("d", path);
   for (const [L, p] of [[A, pa], [B, pb]]) {
     const [x, y] = proj(p);
     svg.append("circle").attr("class", "pt").attr("cx", x).attr("cy", y).attr("r", 7);
     const right = x < W * 0.75;
-    svg.append("text").attr("class", "lbl").attr("x", x + (right ? 12 : -12)).attr("y", y - 10)
+    svg.append("text").attr("class", "lbl").attr("data-x", x).attr("data-y", y).attr("x", x + (right ? 12 : -12)).attr("y", y - 10)
       .attr("text-anchor", right ? "start" : "end").text(L.name);
   }
   box.append(svg.node());
@@ -749,7 +851,7 @@ function route() {
 
 (async function start() {
   try {
-    [LANGS, ANCESTORS] = await Promise.all([load("languages.json"), load("ancestors.json")]);
+    [LANGS, ANCESTORS, SCRIPTS] = await Promise.all([load("languages.json"), load("ancestors.json"), load("scripts.json").catch(() => ({}))]);
   } catch (e) {
     document.getElementById("main").innerHTML = `<p class="status">The language data didn’t load: ${esc(e.message)}. Reload the page to try again.</p>`;
     return;

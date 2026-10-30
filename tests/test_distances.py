@@ -121,3 +121,14 @@ def test_resolve_by_alias():
     langs = Languages(yue=lang("yue", name="Yue Chinese"))
     langs["yue"].record.aliases = ("Cantonese",)
     assert langs.resolve("cantonese").code == "yue"
+
+
+def test_canonical_scripts_skip_romanisations():
+    from glossodesy.linguameta import canonical_scripts
+    hindi = {"language_script_locale": [
+        {"script": {"iso_15924_code": "deva", "is_canonical": True}},
+        {"script": {"iso_15924_code": "latn"}},
+    ]}
+    assert canonical_scripts(hindi) == ("deva",)
+    unmarked = {"language_script_locale": [{"script": {"iso_15924_code": "latn"}}]}
+    assert canonical_scripts(unmarked) == ("latn",)

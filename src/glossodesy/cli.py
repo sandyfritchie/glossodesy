@@ -183,6 +183,9 @@ def cmd_build(args) -> None:
             "macrolanguage": l.record.macrolanguage,
             "members": list(l.record.members) or None,
             "aliases": list(l.record.aliases) or None,
+            "scripts": list(l.record.scripts) or None,
+            "countries": [c for c in l.record.locales if c.isalpha()] or None,
+            "official": list(l.record.official) or None,
             "speakers": l.record.speakers,
             "endangerment": l.record.endangerment,
             "origin": [l.origin.lat, l.origin.lon, l.origin.locale] if l.origin else None,
@@ -197,6 +200,7 @@ def cmd_build(args) -> None:
     dump("wordlists.json", {code: wl.words for code, wl in wls.items()})
     dump("concepts.json", asjp.load_concepts(source_dir("asjp", d.raw_dir)))
     dump("native.json", d.native)
+    dump("scripts.json", linguameta.script_names(source_dir("linguameta", d.raw_dir)))
     print("geographic neighbours…")
     dump("neighbours_geographic.json", neighbours.geographic(langs, k=args.k))
     print("chance baseline for LDND…")
