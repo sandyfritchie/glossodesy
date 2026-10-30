@@ -19,7 +19,7 @@ Swahili…) and instead point to their member languages.
 |---|---|---|---|
 | Genealogical | Glottolog 5.3 | Tree distance: `1 − shared lineage / longer lineage`, plus the lowest common ancestor | ~7,150 languages (not pidgins, mixed, artificial or unclassified languages) |
 | Lexical | ASJP 21.1 | LDND (Wichmann et al. 2010) on the 40-item ASJP list, with a chance baseline | ~5,500 languages |
-| Geographic | LinguaMeta (Glottolog fallback) | Great-circle distance between each language's origin point | ~7,150 languages |
+| Geographic | Glottography (Asher & Moseley 2007 atlas); LinguaMeta, Glottolog | Gap between the areas where each language is traditionally spoken, at their closest (or overlapping / adjacent); a single approximate place where the atlas has no area | ~4,400 languages with areas, ~7,150 in all |
 
 Planned: grammatical (Grambank), phonological (PHOIBLE, needing more thought
 than inventory overlap).
@@ -61,6 +61,23 @@ than inventory overlap).
   Great Britain, Spanish in Spain, Portuguese in Portugal), else the nearest
   to it, else the country with most speakers. Diaspora and colonial languages
   still look far apart (Afrikaans–Dutch: ~9,500 km).
+- **Language areas** come from Glottography's digitisation of Asher & Moseley's
+  *Atlas of the World's Languages* (2007), "traditional" version: areas at the
+  time of contact for the Americas and Australia, the atlas's contemporary
+  areas elsewhere. They cover ~4,400 of LinguaMeta's languages; some major
+  national languages (Indonesian, Punjabi, Filipino) have no area and fall back
+  to a single place. The atlas sometimes includes far-flung communities; small
+  fragments (under 10% of a language's area) more than ~500 km from its main
+  area *and* in another country are dropped (English around Johannesburg,
+  Korean in central Japan, German in Transylvania, Mandarin in Taiwan), while
+  same-country islands stay (the Canaries, the Azores). Nearer pockets remain
+  (Korean in Kyushu), so areas still reflect the atlas editors' choices.
+  Dialect-level codes without their own area use their language's: Serbian,
+  Croatian, Bosnian and Montenegrin all get Serbian-Croatian-Bosnian, and
+  Bokmål and Nynorsk get Norwegian. The site says when a pair shares an area
+  rather than treating it as an overlap. Simplified to ~2 km
+  for the web; two areas count as overlapping only where one reaches more than
+  10 km inside the other, and as adjacent within 25 km.
 - **Missing points.** LinguaMeta has no point for ~1,000 languages. All of them
   had Glottolog points when LinguaMeta was built, and those points are less
   reliable than the ones LinguaMeta kept: about 23% fall outside every country
@@ -110,8 +127,11 @@ written in (or, for closely related languages, the scripts that divide them,
 as with Hindi and Urdu), and the countries both are spoken in and official
 in. These are facts about the pair, not distances, so they aren't scored.
 
-The map highlights the other countries where each language is spoken today,
-zooming out to include them all, and hatches
+The map highlights the other countries where each language is spoken today
+(pink, blue, or purple for both), zooming out to include them all. Countries
+a language's own area substantially covers (8% or more of points sampled
+inside it) stay untinted, since the area already shows where in them it is
+spoken: Tsimane' and Yuracaré show their areas, not all of Bolivia. It also hatches
 Natural Earth's disputed areas (Kashmir, Aksai Chin, Crimea…) rather than
 assigning them to a claimant. `scripts/make_map_assets.py` builds the
 country-code table and disputed-areas layer in `site/assets/map-extra.json`.
@@ -128,6 +148,9 @@ ASJP and NorthEuraLex are CC BY 4.0. Please cite them:
 - Ritchie, Sandy, Daan van Esch, Uche Okonkwo, Shikhar Vashishth & Emily
   Drummond. 2024. LinguaMeta: Unified metadata for thousands of languages.
   *Proceedings of LREC-COLING 2024*, 10530–10538.
+- Asher, R. E. & Christopher J. Moseley (eds.). 2007. *Atlas of the World's
+  Languages*. 2nd edn. Routledge. Digitised by Glottography
+  (https://doi.org/10.5281/zenodo.15287257), CC BY 4.0.
 - Hammarström, Harald, Robert Forkel, Martin Haspelmath & Sebastian Bank.
   *Glottolog 5.3*. Leipzig: Max Planck Institute for Evolutionary Anthropology.
 - Wichmann, Søren, Eric W. Holman & Cecil H. Brown (eds.). *The ASJP Database*

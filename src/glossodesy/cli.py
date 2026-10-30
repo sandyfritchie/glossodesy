@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import asjp, calibrate, distances, glottolog, languages, linguameta, neighbours, northeuralex
+from . import asjp, calibrate, distances, glottography, glottolog, languages, linguameta, neighbours, northeuralex
 from .sources import DEFAULT_RAW_DIR, SOURCES, fetch, source_dir
 
 DEFAULT_BUILD_DIR = Path("data/build")
@@ -62,6 +62,29 @@ class Data:
                 if matched:
                     out[code] = matched
         return out
+
+    @cached_property
+    def areas(self) -> dict:
+        """BCP-47 code -> Glottography area, where the atlas has one for the
+        language (or for the language a dialect-level glottocode belongs to)."""
+        by_gc = glottography.load(source_dir("glottography", self.raw_dir))
+        out = {}
+        self.area_source = {}  # code -> glottocode of the atlas area it uses
+        for code, lang in self.languages.items():
+            gc = lang.glottocode
+            if lang.is_macrolanguage or not gc:
+                continue
+            for candidate in (gc, self.glottolog.language_of.get(gc, "")):
+                if candidate in by_gc:
+                    out[code] = by_gc[candidate]
+                    # Dialect-level codes (Serbian, Croatian…) can share their
+                    # language's area; the site needs to know when two do.
+                    self.area_source[code] = candidate
+                    break
+        from .geo import country_of
+        trimmed, n = glottography.drop_outliers(out, country_of)
+        print(f"  dropped {n} small, far-flung area fragments in other countries")
+        return trimmed
 
     @cached_property
     def null(self) -> np.ndarray:
@@ -173,6 +196,8 @@ def cmd_build(args) -> None:
         print(f"  wrote {path} ({path.stat().st_size / 1e6:.1f} MB)")
 
     t = time.time()
+    from .geo import country_of
+    home = glottography.home_countries(d.areas, country_of)
     dump("languages.json", {
         code: {
             "name": l.name,
@@ -193,15 +218,24 @@ def cmd_build(args) -> None:
             "points": [[p.lat, p.lon, p.locale, p.source] for p in l.points],
             "lineage": list(l.lineage) if l.lineage else None,
             "asjp": wls[code].doculect if code in wls else None,
+            "area": d.area_source.get(code) if code in d.areas else None,
+            "home": home.get(code) or ([l.origin.locale] if l.origin and l.origin.locale.isalpha() else None),
         }
         for code, l in langs.items()
     })
-    used = {gc for l in langs.values() if l.lineage for gc in l.lineage}
+    used = {gc for l in langs.values() if l.lineage for gc in l.lineage} | set(d.area_source.values())
     dump("ancestors.json", {gc: d.glottolog.names[gc] for gc in sorted(used)})
     dump("wordlists.json", {code: wl.words for code, wl in wls.items()})
     dump("concepts.json", asjp.load_concepts(source_dir("asjp", d.raw_dir)))
     dump("native.json", d.native)
     dump("scripts.json", linguameta.script_names(source_dir("linguameta", d.raw_dir)))
+    print("language areas…")
+    (out / "areas").mkdir(exist_ok=True)
+    for letter, geoms in glottography.shards(d.areas).items():
+        path = out / "areas" / f"{letter}.json"
+        path.write_text(json.dumps(geoms, separators=(",", ":")), encoding="utf-8")
+    sizes = [p.stat().st_size for p in (out / "areas").glob("*.json")]
+    print(f"  wrote {len(sizes)} area files under {out / 'areas'} ({sum(sizes) / 1e6:.1f} MB, largest {max(sizes) / 1e6:.2f} MB)")
     print("geographic neighbours…")
     dump("neighbours_geographic.json", neighbours.geographic(langs, k=args.k))
     print("chance baseline for LDND…")

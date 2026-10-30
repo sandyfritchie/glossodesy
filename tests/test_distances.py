@@ -132,3 +132,35 @@ def test_canonical_scripts_skip_romanisations():
     assert canonical_scripts(hindi) == ("deva",)
     unmarked = {"language_script_locale": [{"script": {"iso_15924_code": "latn"}}]}
     assert canonical_scripts(unmarked) == ("latn",)
+
+
+def test_glottography_simplify_winds_exterior_clockwise():
+    from shapely.geometry import Polygon
+    from glossodesy.glottography import simplify
+    ccw = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])  # counter-clockwise, as RFC 7946 likes
+    assert ccw.exterior.is_ccw
+    assert not simplify(ccw).exterior.is_ccw  # d3 needs clockwise exteriors
+
+
+def test_drop_outliers_keeps_same_country_islands():
+    from shapely.geometry import MultiPolygon, box
+    from glossodesy.glottography import drop_outliers
+    main = box(0, 0, 10, 10)
+    island = box(20, 0, 21, 1)  # small, far, same country
+    abroad = box(0, 30, 1, 31)  # small, far, another country
+    near = box(11, 0, 12, 1)  # small but close
+    areas = {"xx": MultiPolygon([main, island, abroad, near])}
+    def country_of(points):
+        return ["AB" if lat < 20 else "CD" for lat, lon in points]
+    out, n = drop_outliers(areas, country_of)
+    assert n == 1 and len(out["xx"].geoms) == 3
+
+
+def test_home_countries_ignores_a_border_brush():
+    from shapely.geometry import box
+    from glossodesy.glottography import home_countries
+    areas = {"xx": box(0, 0, 10, 10)}
+    # x < 9.5 is country AA, the last sliver BB: 5% of the area, under the 8% bar
+    def country_of(points):
+        return ["AA" if lon < 9.5 else "BB" for lat, lon in points]
+    assert home_countries(areas, country_of) == {"xx": ["aa"]}
