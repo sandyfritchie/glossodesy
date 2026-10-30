@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -37,6 +38,23 @@ class Record:
     members: tuple[str, ...] = ()
     points: tuple[Point, ...] = field(default=())
     locales: tuple[str, ...] = ()  # every country LinguaMeta lists, with or without a point
+    aliases: tuple[str, ...] = ()  # other English names (Cantonese for Yue Chinese)
+
+
+def english_aliases(detail: dict, canonical: str) -> tuple[str, ...]:
+    """Other English names LinguaMeta records (from ISO 639, CLDR, Wikidata…),
+    without code-like entries such as "Nld", "Zh-Yue" or "Bhs"."""
+    out, seen = [], {canonical.lower()}
+    for n in detail.get("name_data", []):
+        name = (n.get("name") or "").strip()
+        if n.get("bcp_47_code") != "en" or len(name) <= 3 or any(ch.isdigit() for ch in name):
+            continue
+        if re.match(r"^[A-Za-z]{2,3}-", name):  # Zh-Yue, Zh-Min-Nan
+            continue
+        if name.lower() not in seen:
+            seen.add(name.lower())
+            out.append(name)
+    return tuple(out)
 
 
 def load(linguameta_dir: Path) -> dict[str, Record]:
@@ -74,5 +92,6 @@ def load(linguameta_dir: Path) -> dict[str, Record]:
             points=tuple(points),
             locales=tuple(sorted({e["locale"]["iso_3166_code"] for e in detail.get("language_script_locale", [])
                                   if "locale" in e})),
+            aliases=english_aliases(detail, row["english_name"]),
         )
     return out

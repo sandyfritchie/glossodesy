@@ -39,7 +39,8 @@ class MacrolanguageError(KeyError):
 
 class Languages(dict[str, Language]):
     def resolve(self, query: str) -> Language:
-        """Find a language by BCP-47, ISO 639-3, glottocode or English name.
+        """Find a language by BCP-47, ISO 639-3, glottocode, English name or
+        another English name LinguaMeta knows it by.
 
         A macrolanguage can't be compared directly (it covers several distinct
         languages), so resolving one raises MacrolanguageError listing them —
@@ -62,6 +63,12 @@ class Languages(dict[str, Language]):
                 raise KeyError(f"{query!r} is ambiguous: {', '.join(l.code for l in individual)}")
             elif named:
                 hit = named[0]
+        if hit is None:  # other English names, e.g. Cantonese for Yue Chinese
+            aka = [l for l in self.values() if ql in (n.lower() for n in l.record.aliases)]
+            if len(aka) == 1 or (aka and len({l.code for l in aka if not l.is_macrolanguage}) == 1):
+                hit = next((l for l in aka if not l.is_macrolanguage), aka[0])
+            elif aka:
+                raise KeyError(f"{query!r} could be: {', '.join(f'{l.name} ({l.code})' for l in aka)}")
         if hit is None:
             raise KeyError(f"No language matches {query!r}")
         if hit.is_macrolanguage:
