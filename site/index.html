@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossodesy</title>
+<meta name="description" content="How close are two languages? Compare any pair of the world's languages by family tree, core vocabulary and geography.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F2F5F4;
+  --grid: rgba(59, 102, 132, 0.07);
+  --ink: #1D2B38;
+  --ink-soft: #4A5A68;
+  --ink-faint: #7D8B96;
+  --rule: #C9D3D8;
+  --survey: #3B6684;
+  --survey-wash: #DCE7EE;
+  --flag: #D4146E;
+  --moss: #66785A;
+  --moss-wash: rgba(102, 120, 90, 0.18);
+  --land: #D5DED6;
+  --land-edge: #AFBDB3;
+  --sea: #F8FAFA;
+  --panel: #FFFFFF;
+  --serif: "Source Serif 4", Georgia, serif;
+  --sans: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
+    --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
+    --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
+    --land: #22313D; --land-edge: #34495A; --sea: #172430; --panel: #182531; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121C26; --grid: rgba(140, 180, 210, 0.06); --ink: #E4ECEF; --ink-soft: #AFBDC6;
+  --ink-faint: #7F909C; --rule: #2E3D4A; --survey: #8DB7D3; --survey-wash: #1E3142;
+  --flag: #FF4F9A; --moss: #A3B88F; --moss-wash: rgba(163, 184, 143, 0.16);
+  --land: #22313D; --land-edge: #34495A; --sea: #172430; --panel: #182531; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font: 400 17px/1.55 var(--sans);
+}
+a { color: var(--survey); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+a:hover { color: var(--flag); }
+:focus-visible { outline: 2px solid var(--flag); outline-offset: 2px; border-radius: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+header.site { display: flex; justify-content: space-between; align-items: baseline; padding: 22px 0 0; }
+.wordmark { font: italic 500 20px/1 var(--serif); color: var(--ink); text-decoration: none; letter-spacing: 0.01em; }
+.wordmark:hover { color: var(--ink); }
+header.site nav a { font-size: 15px; margin-left: 18px; }
+
+/* ---- The question ---------------------------------------------------- */
+.question {
+  font: 400 clamp(34px, 6.4vw, 64px)/1.18 var(--serif);
+  letter-spacing: -0.01em;
+  margin: 56px 0 8px;
+  max-width: 20ch;
+}
+.question .slot { position: relative; display: inline-block; }
+.question .tail { white-space: nowrap; }
+.measure { position: absolute; visibility: hidden; white-space: pre; font: italic 500 clamp(34px, 6.4vw, 64px)/1.1 var(--serif); letter-spacing: -0.01em; }
+.question input {
+  font: italic 500 1em/1.1 var(--serif);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--survey);
+  padding: 0 0.04em 0.02em;
+  margin: 0;
+  width: 6ch;
+  min-width: 3ch;
+  max-width: 100%;
+  letter-spacing: -0.01em;
+}
+.question input:focus { outline: none; border-bottom-color: var(--flag); }
+.question input::placeholder { color: var(--ink-faint); }
+.lede { color: var(--ink-soft); max-width: 60ch; margin: 18px 0 0; font-size: 17px; }
+
+.suggest {
+  position: absolute; left: 0; top: 100%; z-index: 20; margin-top: 6px;
+  min-width: min(360px, 86vw); max-width: 86vw;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(15, 30, 45, 0.16);
+  list-style: none; padding: 6px; font: 400 16px/1.35 var(--sans); letter-spacing: 0;
+}
+.suggest[hidden] { display: none; }
+.suggest li { padding: 8px 10px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; gap: 14px; }
+.suggest li[aria-selected="true"] { background: var(--survey-wash); }
+.suggest .nm { font-family: var(--serif); font-style: italic; font-size: 18px; }
+.suggest .meta { color: var(--ink-faint); font-size: 14px; white-space: nowrap; }
+.suggest .note { color: var(--ink-soft); font-size: 14px; padding: 6px 10px 2px; cursor: default; display: block; }
+
+/* ---- Survey staffs ----------------------------------------------------- */
+.staffs { margin: 44px 0 0; display: grid; gap: 30px; }
+.staff { display: grid; grid-template-columns: 150px 1fr; gap: 6px 26px; align-items: start; }
+.staff h2 { font: 700 15px/1.3 var(--sans); margin: 2px 0 0; color: var(--ink); }
+.staff h2 small { display: block; font-weight: 400; color: var(--ink-faint); font-size: 14px; }
+.staff .verdict { font: 400 19px/1.4 var(--serif); margin: 0 0 10px; max-width: 52ch; }
+.staff .verdict b { font-weight: 600; }
+.track {
+  position: relative; height: 14px; border: 1px solid var(--ink-soft); border-radius: 1px;
+  background:
+    repeating-linear-gradient(90deg, var(--ink-soft) 0 1px, transparent 1px 10%),
+    repeating-linear-gradient(90deg, transparent 0 5%, var(--survey-wash) 5% 10%);
+}
+.track .band { position: absolute; top: 0; bottom: 0; background: var(--moss-wash); border-left: 1px dashed var(--moss); border-right: 1px dashed var(--moss); }
+.track .mark {
+  position: absolute; top: -9px; width: 0; height: 30px; border-left: 3px solid var(--flag);
+  transform: translateX(-1.5px);
+}
+.track .mark::before {
+  content: ""; position: absolute; top: -8px; left: -8px;
+  border-left: 6.5px solid transparent; border-right: 6.5px solid transparent; border-top: 9px solid var(--flag);
+}
+.track.empty { opacity: 0.35; }
+.ends { position: relative; display: flex; justify-content: space-between; font-size: 13.5px; color: var(--ink-faint); margin-top: 6px; min-height: 1.4em; }
+.ends .val { position: absolute; top: 0; transform: translateX(-50%); color: var(--flag); font-weight: 700; white-space: nowrap; background: var(--paper); padding: 0 6px; }
+.figure { font-variant-numeric: tabular-nums; }
+
+/* ---- Detail sections --------------------------------------------------- */
+section.detail { margin: 72px 0 0; }
+section.detail > h3 { font: 600 26px/1.25 var(--serif); margin: 0 0 6px; }
+section.detail > p.sub { color: var(--ink-soft); margin: 0 0 22px; max-width: 64ch; }
+
+.lineage { display: grid; gap: 0; font-size: 16px; }
+.trunk { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--rule); }
+.trunk li { padding: 3px 0 3px 12px; position: relative; color: var(--ink-soft); }
+.trunk li::before { content: ""; position: absolute; left: -14px; top: 15px; width: 18px; border-top: 2px solid var(--rule); }
+.trunk li.split { color: var(--ink); font-weight: 700; }
+.trunk li.split::after { content: "last shared ancestor"; font-weight: 400; color: var(--flag); font-size: 14px; margin-left: 10px; }
+.branches { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin: 4px 0 0 14px; }
+.branches .trunk { border-left-color: var(--survey); }
+.branches .trunk li::before { border-top-color: var(--survey); }
+.trunk li.leaf { color: var(--ink); font: italic 500 18px/1.3 var(--serif); }
+.unrelated { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+
+.words { width: 100%; border-collapse: collapse; font-size: 16px; }
+.words th { text-align: left; font-weight: 700; padding: 8px 10px; border-bottom: 2px solid var(--ink-soft); font-size: 15px; }
+.words th.lang { font: italic 500 18px/1.2 var(--serif); }
+.words td { padding: 6px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.words td.gloss { color: var(--ink-soft); width: 22%; }
+.words td.form { font-family: var(--mono); font-size: 15px; width: 30%; overflow-wrap: anywhere; }
+.words td.sim { width: 18%; }
+.words td.missing { color: var(--ink-faint); font-family: var(--sans); font-style: italic; }
+.simbar { height: 8px; background: var(--survey-wash); border-radius: 1px; position: relative; margin-top: 7px; }
+.simbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--survey); border-radius: 1px; }
+.words tr.close .simbar i { background: var(--flag); }
+.words-note { font-size: 14.5px; color: var(--ink-faint); margin-top: 12px; max-width: 70ch; }
+
+.map { width: 100%; aspect-ratio: 16 / 9; max-height: 460px; background: var(--sea); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.map svg { width: 100%; height: 100%; display: block; }
+.map .land { fill: var(--land); stroke: var(--land-edge); stroke-width: 0.6; }
+.map .arc { fill: none; stroke: var(--flag); stroke-width: 2; stroke-dasharray: 6 5; }
+.map .pt { fill: var(--flag); stroke: var(--paper); stroke-width: 2; }
+.map .lbl { font: italic 500 16px var(--serif); fill: var(--ink); paint-order: stroke; stroke: var(--sea); stroke-width: 4px; }
+
+/* ---- Language page ----------------------------------------------------- */
+.lang-head h1 { font: italic 500 clamp(40px, 7vw, 68px)/1.05 var(--serif); margin: 52px 0 6px; letter-spacing: -0.01em; }
+.lang-head .endonym { font: 400 24px/1.3 var(--serif); color: var(--ink-soft); margin: 0 0 18px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 28px; margin: 0 0 8px; padding: 0; }
+.facts div { border-top: 1px solid var(--rule); padding-top: 8px; }
+.facts dt { font-size: 14px; color: var(--ink-faint); }
+.facts dd { margin: 2px 0 0; font-size: 17px; }
+.family-line { color: var(--ink-soft); margin: 18px 0 0; max-width: 75ch; }
+.cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; margin-top: 18px; }
+.cols h4 { font: 700 16px/1.3 var(--sans); margin: 0 0 4px; }
+.cols p.how { font-size: 14px; color: var(--ink-faint); margin: 0 0 12px; }
+.nb { list-style: none; margin: 0; padding: 0; }
+.nb li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--rule); }
+.nb a { font: italic 500 17px/1.3 var(--serif); text-decoration: none; color: var(--ink); }
+.nb a:hover { color: var(--flag); text-decoration: underline; }
+.nb .v { color: var(--ink-faint); font-size: 14.5px; white-space: nowrap; text-align: right; }
+.nb li.chance a { color: var(--ink-faint); }
+.nb-note { font-size: 14px; color: var(--moss); margin: 10px 0 0; }
+.compare-link { margin: 26px 0 0; }
+
+.members { columns: 3 220px; padding: 0; list-style: none; }
+.members li { padding: 3px 0; break-inside: avoid; }
+.members a { font: italic 500 18px/1.4 var(--serif); }
+
+/* ---- About ------------------------------------------------------------- */
+footer.about { margin: 96px 0 0; padding: 28px 0 48px; border-top: 2px solid var(--ink-soft); display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; font-size: 15.5px; color: var(--ink-soft); }
+footer.about h3 { font: 600 20px/1.3 var(--serif); color: var(--ink); margin: 0 0 8px; }
+footer.about p { margin: 0 0 12px; max-width: 62ch; }
+footer.about dl { margin: 0; }
+footer.about dt { font-weight: 700; color: var(--ink); margin-top: 10px; }
+footer.about dd { margin: 2px 0 0; }
+
+.status { color: var(--ink-soft); margin: 60px 0; font-size: 18px; }
+
+@media (max-width: 760px) {
+  body { font-size: 16px; }
+  .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .question { margin-top: 36px; }
+  .staff { grid-template-columns: 1fr; }
+  .branches, .unrelated, .cols, footer.about { grid-template-columns: 1fr; }
+  .words td.gloss { width: auto; }
+  .words td.sim, .words th.sim { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .track .mark { transition: left 420ms cubic-bezier(.2,.7,.2,1); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="wordmark" href="#">glossodesy</a>
+    <nav><a href="#about">About</a><a href="https://github.com/sandyfritchie/glossodesy">Code</a></nav>
+  </header>
+  <main id="main"><p class="status">Loading languages…</p></main>
+  <footer class="about" id="about">
+    <div>
+      <h3>How this works</h3>
+      <p>“How similar are these languages?” has more than one answer, so each is measured separately and none is folded into a single score.</p>
+      <p><b>Family tree</b> is the position of both languages in Glottolog’s classification: 0 means the same language, 1 means no known common ancestor. It measures structure, not time; some families are subdivided far more finely than others.</p>
+      <p><b>Core words</b> compares 40 basic words (I, two, water, eye…) using LDND, a sound-based edit distance corrected for chance resemblance. Around 1.0 is what unrelated languages score, so the shaded band on the scale shows the range of 98% of unrelated pairs.</p>
+      <p><b>Distance</b> is between the places each language comes from, not everywhere it is spoken today, so English is placed in England and Spanish in Spain.</p>
+    </div>
+    <div>
+      <h3>Sources</h3>
+      <dl>
+        <dt>LinguaMeta</dt><dd>Language names, codes, speaker numbers and locations. CC BY-SA 4.0.</dd>
+        <dt>Glottolog 5.3</dt><dd>Language classification. CC BY 4.0.</dd>
+        <dt>ASJP 21.1</dt><dd>40-item word lists. CC BY 4.0.</dd>
+      </dl>
+      <p style="margin-top:16px">The data on this site is CC BY-SA 4.0. The code is on <a href="https://github.com/sandyfritchie/glossodesy">GitHub</a>.</p>
+    </div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+"use strict";
+const DATA = "data/";
+const DEFAULT_PAIR = ["nl", "de"];
+const fmt = new Intl.NumberFormat("en");
+const regionName = (() => {
+  try { const d = new Intl.DisplayNames(["en"], { type: "region" }); return (cc) => { try { return d.of(cc.toUpperCase()); } catch { return cc.toUpperCase(); } }; }
+  catch { return (cc) => cc.toUpperCase(); }
+})();
+
+/* ---- Data loading -------------------------------------------------------- */
+const cache = {};
+function load(name) {
+  if (!cache[name]) cache[name] = fetch(DATA + name).then((r) => {
+    if (!r.ok) throw new Error(`Couldn't load ${name} (${r.status})`);
+    return r.json();
+  });
+  return cache[name];
+}
+let LANGS, ANCESTORS, INDEX;
+
+/* ---- Distances (mirrors the Python package) ----------------------------- */
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = new Array(b.length + 1), cur = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    [prev, cur] = [cur, prev];
+  }
+  return prev[b.length];
+}
+const nd = (a, b) => { const m = Math.max(a.length, b.length); return m ? levenshtein(a, b) / m : 0; };
+function minNd(fa, fb) { let best = 1; for (const x of fa) for (const y of fb) best = Math.min(best, nd(x, y)); return best; }
+
+function ldnd(wa, wb) {
+  const shared = Object.keys(wa).filter((c) => c in wb);
+  const n = shared.length;
+  if (n < 20) return null;
+  let same = 0, diff = 0;
+  const perConcept = {};
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const d = minNd(wa[shared[i]], wb[shared[j]]);
+      if (i === j) { same += d; perConcept[shared[i]] = d; } else diff += d;
+    }
+  }
+  same /= n; diff /= n * (n - 1);
+  return { ldnd: diff ? same / diff : NaN, ldn: same, n, perConcept };
+}
+
+function genealogical(a, b) {
+  if (!a.lineage || !b.lineage) return null;
+  let shared = 0;
+  while (shared < a.lineage.length && shared < b.lineage.length && a.lineage[shared] === b.lineage[shared]) shared++;
+  if (!shared) return { distance: 1, ancestor: null, shared: 0 };
+  return { distance: 1 - shared / Math.max(a.lineage.length, b.lineage.length), ancestor: a.lineage[shared - 1], shared };
+}
+
+function km(p, q) {
+  const r = Math.PI / 180, [la1, lo1] = p, [la2, lo2] = q;
+  const h = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+/** Share of unrelated pairs at least this similar, from the quantile table. */
+function chanceRate(nullQ, v) {
+  const { p, ldnd: q } = nullQ;
+  if (v < q[0]) return 0;
+  if (v >= q[q.length - 1]) return 1;
+  let i = 1; while (q[i] < v) i++;
+  const t = (v - q[i - 1]) / ((q[i] - q[i - 1]) || 1);
+  return p[i - 1] + t * (p[i] - p[i - 1]);
+}
+const quantile = (nullQ, prob) => {
+  const { p, ldnd: q } = nullQ;
+  let i = 0; while (i < p.length - 1 && p[i] < prob) i++;
+  return q[i];
+};
+
+/* ---- Search -------------------------------------------------------------- */
+function buildIndex() {
+  return Object.entries(LANGS).map(([code, l]) => ({
+    code, l,
+    name: l.name.toLowerCase(),
+    endonym: (l.endonym || "").toLowerCase(),
+    words: l.name.toLowerCase().split(/[\s\-(),']+/).filter(Boolean),
+  }));
+}
+function search(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return [];
+  const out = [];
+  for (const e of INDEX) {
+    let s = 0;
+    if (e.code === q || e.l.iso === q) s = 100;
+    else if (e.name === q) s = 90;
+    else if (e.name.startsWith(q)) s = 70;
+    else if (e.words.some((w) => w.startsWith(q))) s = 55;
+    else if (e.endonym && e.endonym.startsWith(q)) s = 50;
+    else if (q.length > 2 && e.name.includes(q)) s = 30;
+    if (s) out.push([s + Math.log10((e.l.speakers || 1) + 1) / 2, e]);
+  }
+  return out.sort((a, b) => b[0] - a[0]).slice(0, 8).map((x) => x[1]);
+}
+
+/** Wire a combobox: an <input> with a suggestion list. onPick(code) on choice. */
+function combobox(input, list, onPick) {
+  let items = [], active = -1;
+  const measure = input.closest("h1")?.querySelector(".measure");
+  const fit = () => {
+    if (!measure) return;
+    measure.textContent = input.value || input.placeholder || "mmm";
+    input.style.width = Math.ceil(measure.getBoundingClientRect().width + 6) + "px";
+  };
+  fit();
+  function render(entries, note) {
+    items = entries; active = entries.length ? 0 : -1;
+    list.innerHTML = "";
+    if (note) { const n = document.createElement("li"); n.className = "note"; n.textContent = note; n.setAttribute("role", "presentation"); list.append(n); }
+    entries.forEach((e, i) => {
+      const li = document.createElement("li");
+      li.id = `${list.id}-${i}`; li.setAttribute("role", "option");
+      const tag = e.l.scope === "macrolanguage" ? "group of languages" : e.code;
+      li.innerHTML = `<span class="nm"></span><span class="meta"></span>`;
+      li.firstChild.textContent = e.l.name;
+      li.lastChild.textContent = e.l.endonym && e.l.endonym.toLowerCase() !== e.name ? `${e.l.endonym} · ${tag}` : tag;
+      li.addEventListener("mousedown", (ev) => { ev.preventDefault(); choose(i); });
+      list.append(li);
+    });
+    list.hidden = !entries.length && !note;
+    input.setAttribute("aria-expanded", String(!list.hidden));
+    mark();
+  }
+  function mark() {
+    [...list.querySelectorAll('[role="option"]')].forEach((li, i) => li.setAttribute("aria-selected", String(i === active)));
+    if (active >= 0) input.setAttribute("aria-activedescendant", `${list.id}-${active}`); else input.removeAttribute("aria-activedescendant");
+  }
+  function choose(i) {
+    const e = items[i]; if (!e) return;
+    if (e.l.scope === "macrolanguage") {
+      const members = (e.l.members || []).filter((m) => LANGS[m]).map((m) => INDEX.find((x) => x.code === m))
+        .sort((a, b) => (b.l.speakers || 0) - (a.l.speakers || 0)).slice(0, 8);
+      input.value = ""; fit();
+      render(members, `${e.l.name} covers several languages. Pick one:`);
+      return;
+    }
+    input.value = e.l.name; fit(); list.hidden = true; input.setAttribute("aria-expanded", "false");
+    onPick(e.code);
+  }
+  input.addEventListener("input", () => { fit(); render(search(input.value)); });
+  input.addEventListener("focus", () => input.select());
+  input.addEventListener("blur", () => { setTimeout(() => { list.hidden = true; input.setAttribute("aria-expanded", "false"); }, 120); });
+  input.addEventListener("keydown", (ev) => {
+    if (list.hidden) return;
+    const n = items.length;
+    if (ev.key === "ArrowDown") { active = (active + 1) % n; mark(); ev.preventDefault(); }
+    else if (ev.key === "ArrowUp") { active = (active - 1 + n) % n; mark(); ev.preventDefault(); }
+    else if (ev.key === "Enter") { choose(active); ev.preventDefault(); }
+    else if (ev.key === "Escape") { list.hidden = true; }
+  });
+  return { set(name) { input.value = name; fit(); } };
+}
+
+/* ---- Rendering helpers --------------------------------------------------- */
+const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ancestorName = (gc) => ANCESTORS[gc] || gc;
+const pct = (x) => x < 0.001 ? "fewer than 1 in 1,000" : x < 0.01 ? `${(x * 100).toFixed(1)}%` : `${Math.round(x * 100)}%`;
+const kmText = (d) => d < 10 ? `${d.toFixed(1)} km` : `${fmt.format(Math.round(d / (d > 1000 ? 10 : 1)) * (d > 1000 ? 10 : 1))} km`;
+const geoX = (d) => Math.min(1, Math.log10(Math.max(d, 1)) / Math.log10(20000));
+
+function staff({ title, sub, verdict, x, band, ends, value, empty }) {
+  const node = el(`<div class="staff">
+    <h2>${esc(title)}<small>${esc(sub)}</small></h2>
+    <div>
+      <p class="verdict">${verdict}</p>
+      <div class="track${empty ? " empty" : ""}" role="img"></div>
+      <div class="ends">${ends.map((e) => `<span>${esc(e)}</span>`).join("")}</div>
+    </div>
+  </div>`);
+  const track = node.querySelector(".track");
+  if (band) { const b = el(`<span class="band"></span>`); b.style.left = band[0] * 100 + "%"; b.style.width = (band[1] - band[0]) * 100 + "%"; track.append(b); }
+  if (x != null) {
+    const pos = Math.max(0, Math.min(1, x));
+    const m = el(`<span class="mark"></span>`); m.style.left = "0%"; track.append(m);
+    requestAnimationFrame(() => requestAnimationFrame(() => { m.style.left = pos * 100 + "%"; }));
+    if (value) {
+      const v = el(`<span class="val"></span>`); v.textContent = value;
+      v.style.left = Math.max(6, Math.min(94, pos * 100)) + "%";
+      const ends = node.querySelector(".ends");
+      ends.append(v);
+      // Once laid out, hide whichever end label the value would sit on top of.
+      requestAnimationFrame(() => {
+        const r = v.getBoundingClientRect();
+        for (const e of ends.querySelectorAll("span:not(.val)")) {
+          const q = e.getBoundingClientRect();
+          e.style.visibility = q.right + 8 > r.left && q.left - 8 < r.right ? "hidden" : "";
+        }
+      });
+    }
+  }
+  return node;
+}
+
+/* ---- Compare page -------------------------------------------------------- */
+async function renderCompare(a, b) {
+  const A = LANGS[a], B = LANGS[b];
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const q = el(`<h1 class="question">How close are
+      <span class="slot"><label class="sr-only" for="pick-a">First language</label><input id="pick-a" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-a" autocomplete="off" spellcheck="false"><ul class="suggest" id="sug-a" role="listbox" hidden></ul></span>
+      and
+      <span class="tail"><span class="slot"><label class="sr-only" for="pick-b">Second language</label><input id="pick-b" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-b" autocomplete="off" spellcheck="false"><ul class="suggest" id="sug-b" role="listbox" hidden></ul></span>?</span><span class="measure" aria-hidden="true"></span></h1>`);
+  main.append(q);
+  const ca = combobox(q.querySelector("#pick-a"), q.querySelector("#sug-a"), (code) => go(code, b));
+  const cb = combobox(q.querySelector("#pick-b"), q.querySelector("#sug-b"), (code) => go(a, code));
+  ca.set(A.name); cb.set(B.name);
+  main.append(el(`<p class="lede">Pick any two of ${fmt.format(INDEX.filter((e) => e.l.scope === "language").length)} languages. Read about <a href="#${a}">${esc(A.name)}</a> or <a href="#${b}">${esc(B.name)}</a> on its own.</p>`));
+
+  const staffs = el(`<div class="staffs"></div>`);
+  main.append(staffs);
+
+  // Family tree
+  const g = genealogical(A, B);
+  let gv;
+  if (a === b) gv = "These are the same language.";
+  else if (!g) gv = `${esc((A.lineage ? B : A).name)} isn’t placed in a language family (it’s classified as a pidgin, mixed, constructed or unclassified language), so there’s no family tree to compare.`;
+  else if (!g.ancestor) gv = `No known common ancestor. Glottolog puts them in separate families.`;
+  else if (g.ancestor === A.lineage[A.lineage.length - 1] || g.ancestor === B.lineage[B.lineage.length - 1]) gv = `One is classified as a variety of the other.`;
+  else gv = `Both belong to <b>${esc(ancestorName(g.ancestor))}</b>.`;
+  staffs.append(staff({
+    title: "Family tree", sub: "Glottolog classification", verdict: gv, empty: !g,
+    x: g ? g.distance : null, value: g ? g.distance.toFixed(2) : null, ends: ["same language", "no known link"],
+  }));
+
+  // Core words
+  const [wls, nullQ] = await Promise.all([load("wordlists.json"), load("ldnd_null.json")]);
+  const wa = wls[a], wb = wls[b];
+  const lex = wa && wb ? ldnd(wa, wb) : null;
+  const MAXL = 1.1;
+  const band = [quantile(nullQ, 0.01) / MAXL, quantile(nullQ, 0.99) / MAXL];
+  let lv, rate = null;
+  if (a === b) lv = "Identical lists.";
+  else if (!wa || !wb) lv = `There’s no ASJP word list for ${esc((!wa ? A : B).name)}${!wa && !wb ? ` or ${esc(B.name)}` : ""}.`;
+  else if (!lex) lv = "The two word lists share too few of the 40 words to compare.";
+  else if (A.asjp && A.asjp === B.asjp) lv = "Both use the same ASJP word list, so they can’t be told apart here.";
+  else {
+    rate = chanceRate(nullQ, lex.ldnd);
+    lv = rate < 1e-4 ? "Far more alike than chance would explain."
+      : rate < 0.01 ? `More alike than chance would usually explain: only ${pct(rate)} of unrelated pairs come this close.`
+      : rate < 0.05 ? `Barely more alike than unrelated languages: ${pct(rate)} of unrelated pairs come this close.`
+      : "No more alike than unrelated languages typically are.";
+  }
+  staffs.append(staff({
+    title: "Core words", sub: "40 basic words, ASJP", verdict: lv, empty: !lex,
+    x: lex ? Math.min(lex.ldnd, MAXL) / MAXL : null, band,
+    value: lex ? `LDND ${lex.ldnd.toFixed(2)}` : null, ends: ["identical", "unrelated"],
+  }));
+
+  // Distance
+  const d = A.origin && B.origin ? km(A.origin, B.origin) : null;
+  let dv;
+  if (d == null) dv = `There’s no location for ${esc((!A.origin ? A : B).name)}.`;
+  else if (d < 1) dv = "They come from the same place.";
+  else {
+    const ra = regionName(A.origin[2]), rb = regionName(B.origin[2]);
+    dv = `Their origins are <b class="figure">${kmText(d)}</b> apart${ra === rb ? `, both in ${esc(ra)}` : `, in ${esc(ra)} and ${esc(rb)}`}.`;
+  }
+  staffs.append(staff({
+    title: "Distance", sub: "between places of origin, on a log scale", verdict: dv, empty: d == null,
+    x: d != null ? geoX(d) : null, value: d != null ? kmText(d) : null, ends: ["1 km", "20,000 km"],
+  }));
+
+  // Details
+  if (a !== b) {
+    if (g) main.append(lineageSection(A, B, g));
+    if (lex && !(A.asjp && A.asjp === B.asjp)) main.append(wordsSection(A, B, wa, wb, lex, await load("concepts.json")));
+    if (d != null) main.append(await mapSection(A, B, d));
+  }
+}
+
+function lineageSection(A, B, g) {
+  const s = el(`<section class="detail"><h3>Where they sit in the family tree</h3><p class="sub"></p></section>`);
+  const chain = (nodes, leafLast) => `<ul class="trunk">${nodes.map((gc, i) =>
+    `<li class="${leafLast && i === nodes.length - 1 ? "leaf" : ""}">${esc(ancestorName(gc))}</li>`).join("")}</ul>`;
+  if (!g.ancestor) {
+    s.querySelector(".sub").textContent = "Their classifications never meet: each starts from a different top-level family.";
+    s.append(el(`<div class="unrelated"><div>${chain(A.lineage, true)}</div><div>${chain(B.lineage, true)}</div></div>`));
+    return s;
+  }
+  const shared = A.lineage.slice(0, g.shared);
+  s.querySelector(".sub").textContent = `Each line is one step down Glottolog’s classification. They share ${g.shared} step${g.shared === 1 ? "" : "s"} before splitting.`;
+  const box = el(`<div class="lineage"></div>`);
+  const trunk = el(chain(shared, false));
+  trunk.lastChild.classList.add("split");
+  box.append(trunk);
+  box.append(el(`<div class="branches"><div>${chain(A.lineage.slice(g.shared), true)}</div><div>${chain(B.lineage.slice(g.shared), true)}</div></div>`));
+  s.append(box);
+  return s;
+}
+
+function wordsSection(A, B, wa, wb, lex, concepts) {
+  const s = el(`<section class="detail"><h3>The 40 words, side by side</h3>
+    <p class="sub">The bar shows how similar each pair of words is in sound. Pink rows are close enough to be likely cognates or loans.</p></section>`);
+  const rows = Object.keys(concepts).sort((x, y) => +x - +y).map((c) => {
+    const fa = wa[c], fb = wb[c];
+    const sim = c in lex.perConcept ? 1 - lex.perConcept[c] : null;
+    const close = sim != null && sim >= 0.6;
+    const cell = (f) => f ? `<td class="form">${esc(f.join(", "))}</td>` : `<td class="form missing">not recorded</td>`;
+    return `<tr class="${close ? "close" : ""}"><td class="gloss">${esc(concepts[c])}</td>${cell(fa)}${cell(fb)}
+      <td class="sim">${sim == null ? "" : `<div class="simbar" title="${Math.round(sim * 100)}% similar"><i style="width:${(sim * 100).toFixed(0)}%"></i></div>`}</td></tr>`;
+  }).join("");
+  s.append(el(`<table class="words"><thead><tr><th>Meaning</th><th class="lang">${esc(A.name)}</th><th class="lang">${esc(B.name)}</th><th class="sim"><span class="sr-only">Similarity</span></th></tr></thead><tbody>${rows}</tbody></table>`));
+  s.append(el(`<p class="words-note">Words are written in ASJP’s simplified 41-symbol transcription, not IPA: <code>3</code> is a schwa, <code>7</code> a glottal stop, <code>S</code> and <code>C</code> are “sh” and “ch”. Lists: ${esc(A.asjp)} and ${esc(B.asjp)} from ASJP.</p>`));
+  return s;
+}
+
+let LAND;
+async function mapSection(A, B, d) {
+  const s = el(`<section class="detail"><h3>On the map</h3><p class="sub">Each language is shown where it comes from.</p><div class="map"></div></section>`);
+  const box = s.querySelector(".map");
+  if (!window.d3 || !window.topojson) { box.remove(); return s; }
+  try {
+    LAND = LAND || await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/land-50m.json").then((r) => r.json()).then((t) => topojson.feature(t, t.objects.land));
+  } catch { box.remove(); return s; }
+  const W = 960, H = 540;
+  const pa = [A.origin[1], A.origin[0]], pb = [B.origin[1], B.origin[0]];
+  const mid = d3.geoInterpolate(pa, pb)(0.5);
+  const radius = Math.min(80, Math.max(4, (d / 111) * 0.85));
+  const frame = d3.geoCircle().center(mid).radius(radius)();
+  const proj = d3.geoEqualEarth().rotate([-mid[0], 0]).fitExtent([[40, 30], [W - 40, H - 30]], frame);
+  const path = d3.geoPath(proj);
+  const svg = d3.create("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("role", "img")
+    .attr("aria-label", `Map showing ${A.name} and ${B.name}, ${kmText(d)} apart`);
+  svg.append("path").datum(LAND).attr("class", "land").attr("d", path);
+  svg.append("path").datum({ type: "LineString", coordinates: [pa, pb] }).attr("class", "arc").attr("d", path);
+  for (const [L, p] of [[A, pa], [B, pb]]) {
+    const [x, y] = proj(p);
+    svg.append("circle").attr("class", "pt").attr("cx", x).attr("cy", y).attr("r", 7);
+    const right = x < W * 0.75;
+    svg.append("text").attr("class", "lbl").attr("x", x + (right ? 12 : -12)).attr("y", y - 10)
+      .attr("text-anchor", right ? "start" : "end").text(L.name);
+  }
+  box.append(svg.node());
+  return s;
+}
+
+/* ---- Language page ------------------------------------------------------- */
+async function renderLanguage(code) {
+  const L = LANGS[code];
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const head = el(`<div class="lang-head"><h1>${esc(L.name)}</h1>${L.endonym && L.endonym !== L.name ? `<p class="endonym">${esc(L.endonym)}</p>` : ""}</div>`);
+  main.append(head);
+
+  if (L.scope === "macrolanguage") {
+    const members = (L.members || []).filter((m) => LANGS[m]).sort((x, y) => (LANGS[y].speakers || 0) - (LANGS[x].speakers || 0));
+    main.append(el(`<p class="lede">${esc(L.name)} is a macrolanguage: a single name for ${members.length} closely related languages that are counted separately. Pick one to see how close it is to others.</p>`));
+    main.append(el(`<ul class="members">${members.map((m) => `<li><a href="#${m}">${esc(LANGS[m].name)}</a></li>`).join("")}</ul>`));
+    return;
+  }
+
+  const facts = [
+    ["Speakers", L.speakers ? fmt.format(L.speakers) : "Not known"],
+    ["Status", L.endangerment || "Not known"],
+    ["Comes from", L.origin ? regionName(L.origin[2]) : "Not known"],
+    ["Codes", [code, L.iso && L.iso !== code ? L.iso : null].filter(Boolean).join(", ")],
+  ];
+  if (L.glottocode) facts.push(["Glottolog", `<a href="https://glottolog.org/resource/languoid/id/${esc(L.glottocode)}">${esc(L.glottocode)}</a>`]);
+  main.append(el(`<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${k === "Glottolog" ? v : esc(v)}</dd></div>`).join("")}</dl>`));
+  if (L.lineage && L.lineage.length > 1) {
+    main.append(el(`<p class="family-line">${L.lineage.slice(0, -1).map((gc) => esc(ancestorName(gc))).join(" › ")}</p>`));
+  }
+
+  const sec = el(`<section class="detail"><h3>Closest languages</h3><p class="sub">Three different answers to “what is ${esc(L.name)} closest to?”. Pick one to compare.</p><div class="cols"></div></section>`);
+  main.append(sec);
+  const cols = sec.querySelector(".cols");
+  const col = (title, how) => { const c = el(`<div><h4>${title}</h4><p class="how">${how}</p><ul class="nb"></ul></div>`); cols.append(c); return c; };
+  const item = (other, value, cls = "") => `<li class="${cls}"><a href="#${code}-${other}">${esc(LANGS[other].name)}</a><span class="v">${value}</span></li>`;
+
+  // Family tree neighbours (computed here)
+  const fam = col("Family tree", "Fewest steps apart in Glottolog, nearest first.");
+  if (!L.lineage) fam.querySelector(".nb").outerHTML = `<p class="how">Not placed in a language family.</p>`;
+  else {
+    const scored = [];
+    for (const [c, o] of Object.entries(LANGS)) {
+      if (c === code || !o.lineage || o.scope !== "language" || o.lineage[0] !== L.lineage[0]) continue;
+      const gg = genealogical(L, o);
+      const dist = L.origin && o.origin ? km(L.origin, o.origin) : 1e9;
+      scored.push([gg.distance, dist, c, gg.ancestor]);
+    }
+    scored.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+    fam.querySelector(".nb").innerHTML = scored.length
+      ? scored.slice(0, 12).map(([dd, , c, anc]) => item(c, esc(ancestorName(anc)))).join("")
+      : `<li>No known relatives: ${esc(L.name)} is an isolate.</li>`;
+  }
+
+  // Lexical neighbours (precomputed)
+  const lexCol = col("Core words", "Most similar 40-word lists by LDND.");
+  const [nbLex, nullQ] = await Promise.all([load("neighbours_lexical.json"), load("ldnd_null.json")]);
+  const list = nbLex[code];
+  if (!list || !list.length) lexCol.querySelector(".nb").outerHTML = `<p class="how">No ASJP word list.</p>`;
+  else {
+    const cut = quantile(nullQ, 1e-4); // best-of-thousands: anything above this could be luck
+    lexCol.querySelector(".nb").innerHTML = list.slice(0, 12).map(([c, v]) => item(c, v.toFixed(2), v > cut ? "chance" : "")).join("");
+    if (list.slice(0, 12).some(([, v]) => v > cut)) {
+      lexCol.append(el(`<p class="nb-note">Greyed names score no better than the luckiest unrelated languages would, after searching thousands of lists.</p>`));
+    }
+  }
+
+  // Geographic neighbours (precomputed)
+  const geoCol = col("Distance", "Nearest places of origin.");
+  const nbGeo = await load("neighbours_geographic.json");
+  const gl = nbGeo[code];
+  geoCol.querySelector(".nb").innerHTML = gl && gl.length
+    ? gl.slice(0, 12).map(([c, v]) => item(c, kmText(v))).join("")
+    : `<li>No location.</li>`;
+
+  main.append(el(`<p class="compare-link"><a href="#${code}-${code === "en" ? "de" : "en"}">Compare ${esc(L.name)} with another language</a></p>`));
+}
+
+/* ---- Routing ------------------------------------------------------------- */
+// Routes are plain hash names, which survive being shared as links:
+// #nl is a language page, #nl-de compares two (language codes never contain "-").
+function go(a, b) { location.hash = b ? `#${a}-${b}` : `#${a}`; }
+function route() {
+  const parts = location.hash.replace(/^#\/?/, "").split(/[-/]/).filter(Boolean);
+  if (parts[0] === "about") {
+    if (!document.querySelector(".staff, .lang-head")) renderCompare(...DEFAULT_PAIR).then(() => document.getElementById("about").scrollIntoView());
+    return;
+  }
+  const main = document.getElementById("main");
+  const known = (c) => c && LANGS[c];
+  const notFound = (c) => { main.innerHTML = ""; main.append(el(`<p class="status">There’s no language with the code “${esc(c)}”. <a href="#">Start again</a>.</p>`)); };
+  window.scrollTo(0, 0);
+  if (parts.length >= 2) {
+    const [a, b] = parts;
+    if (!known(a)) return notFound(a);
+    if (!known(b)) return notFound(b);
+    if (LANGS[a].scope === "macrolanguage") return go(a);
+    if (LANGS[b].scope === "macrolanguage") return go(b);
+    document.title = `${LANGS[a].name} and ${LANGS[b].name} · Glossodesy`;
+    return renderCompare(a, b);
+  }
+  if (parts.length === 1) {
+    if (!known(parts[0])) return notFound(parts[0]);
+    document.title = `${LANGS[parts[0]].name} · Glossodesy`;
+    return renderLanguage(parts[0]);
+  }
+  document.title = "Glossodesy";
+  return renderCompare(...DEFAULT_PAIR);
+}
+
+(async function start() {
+  try {
+    [LANGS, ANCESTORS] = await Promise.all([load("languages.json"), load("ancestors.json")]);
+  } catch (e) {
+    document.getElementById("main").innerHTML = `<p class="status">The language data didn’t load: ${esc(e.message)}. Reload the page to try again.</p>`;
+    return;
+  }
+  INDEX = buildIndex();
+  window.addEventListener("hashchange", () => { if (location.hash !== "#about") route(); });
+  route();
+})();
+</script>
+</body>
+</html>

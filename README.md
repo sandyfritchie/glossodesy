@@ -80,6 +80,23 @@ glossodesy build                       # JSON for the website, into data/build/
 
 Languages can be given as BCP-47 codes, ISO 639-3 codes, glottocodes or exact English names.
 
+## Website
+
+`site/index.html` is a static page that reads the JSON from `glossodesy build`.
+Compare two languages at `#nl-de`, or see one language's nearest neighbours at
+`#nl`. Pairwise numbers are computed in the browser (and match the Python
+package); nearest-neighbour lists are precomputed.
+
+To run it locally:
+
+```bash
+glossodesy build --out site/data
+python -m http.server -d site 8000      # then open http://localhost:8000
+```
+
+`.github/workflows/pages.yml` builds the data and deploys the site to GitHub
+Pages on every push to `main`.
+
 ## Data and licences
 
 Upstream data is pinned in `src/glossodesy/sources.py`. LinguaMeta is

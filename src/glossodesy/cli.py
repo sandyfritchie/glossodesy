@@ -175,6 +175,7 @@ def cmd_build(args) -> None:
     used = {gc for l in langs.values() if l.lineage for gc in l.lineage}
     dump("ancestors.json", {gc: d.glottolog.names[gc] for gc in sorted(used)})
     dump("wordlists.json", {code: wl.words for code, wl in wls.items()})
+    dump("concepts.json", asjp.load_concepts(source_dir("asjp", d.raw_dir)))
     print("geographic neighbours…")
     dump("neighbours_geographic.json", neighbours.geographic(langs, k=args.k))
     print("chance baseline for LDND…")
